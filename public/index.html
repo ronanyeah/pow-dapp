@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>POW 💥</title>
+
+    <meta name="title" content="POW 💥" />
+    <meta name="description" content="The world's first proof-of-work NFT" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta property="og:url" content="https://pow.cafe/" />
+    <meta property="og:image" content="https://pow.cafe/twitter_card.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="POW 💥" />
+    <meta
+      property="og:description"
+      content="The world's first proof-of-work NFT"
+    />
+
+    <style>
+      @keyframes rotation {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(359deg);
+        }
+      }
+
+      @keyframes flash {
+        0% {
+          font-color: inherit;
+        }
+        50% {
+          font-color: white;
+        }
+        100% {
+          font-color: inherit;
+        }
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.02);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      ::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="/bundle.js"></script>
+  </body>
+</html>
