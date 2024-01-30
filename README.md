@@ -7,12 +7,17 @@
 
 ---
 
-## How to fetch dependencies
+### Fetch dependencies
 - `npm install`
 
-## How to build
-- `npm run build`
+### Build
+- `npm run worker:build && npm run build`
 
-## How to develop
+### Develop
+- `npm run worker:build`
 - `npm run watch`
 - Navigate to [localhost:8000](http:localhost:8000).
+
+### Benchmark the key generator
+- `npm run worker:build`
+- `npm run benchmark`
