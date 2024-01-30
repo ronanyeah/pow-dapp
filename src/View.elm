@@ -191,15 +191,7 @@ viewWide model =
             , width fill
             , fadeIn
             ]
-    , [ [ navBtn model.view ("Mint " ++ bang) ViewHome
-        , navBtn model.view "Vanity Generator" ViewGenerator
-        , image [ height <| px 26 ]
-            { src = "/github.png"
-            , description = ""
-            }
-            |> linkOut "https://github.com/ronanyeah/pow-dapp" [ alignRight, padding 3 ]
-        ]
-            |> row [ spacing 10, width fill ]
+    , [ viewNav model
       , case model.view of
             ViewHome ->
                 viewInfo model
@@ -314,8 +306,6 @@ viewThin model =
                 ]
       ]
         |> row [ spacing 10, centerX ]
-    , text "1000 minted so far!"
-        |> when False
 
     --, model.demoAddress
     --|> List.indexedMap
@@ -332,7 +322,15 @@ viewThin model =
     --text txt
     --)
     --|> row [ centerX, spacing 1 ]
-    , viewInfo model
+    , [ viewNav model
+      , case model.view of
+            ViewHome ->
+                viewInfo model
+
+            _ ->
+                viewGenerator model
+      ]
+        |> column [ width fill, height fill ]
 
     --, viewGenerator model
     --, viewPanel model
@@ -342,6 +340,7 @@ viewThin model =
             [ fork model.isMobile (width fill) centerX
             , alignBottom
             ]
+        |> when (model.view == ViewHome)
     ]
         |> column
             [ padding
@@ -390,7 +389,7 @@ viewGenerator model =
                 , text = model.endInput
                 }
     in
-    [ [ para [ titleFont, Font.size 20 ] "Vanity Keypair Generator"
+    [ [ para [ titleFont, Font.size (fork model.isMobile 17 20) ] "Vanity Keypair Generator"
       , text "Learn more"
             |> linkOut "https://www.quicknode.com/guides/solana-development/getting-started/how-to-create-a-custom-vanity-wallet-address-using-solana-cli"
                 [ Font.underline
@@ -415,13 +414,21 @@ viewGenerator model =
                 --viewH2 label |> Input.labelAbove []
                 Input.labelHidden ""
             , options =
-                [ text "Match Start"
+                let
+                    prefix =
+                        if model.isMobile then
+                            ""
+
+                        else
+                            "Match "
+                in
+                [ text (prefix ++ "Start")
                     |> el [ hover ]
                     |> Input.option MatchStart
-                , text "Match End"
+                , text (prefix ++ "End")
                     |> el [ hover ]
                     |> Input.option MatchEnd
-                , text "Match Both"
+                , text (prefix ++ "Both")
                     |> el [ hover ]
                     |> Input.option MatchBoth
                 ]
@@ -458,6 +465,7 @@ viewGenerator model =
                 ]
         , [ if model.grinding then
                 [ [ text "Generation in progress"
+                        |> when (not model.isMobile)
                   , spinner 15
                   ]
                     |> row [ spacing 10, Font.size 13 ]
@@ -469,6 +477,7 @@ viewGenerator model =
                         , Background.color red
                         , Border.rounded 5
                         , alignRight
+                        , Font.size (fork model.isMobile 17 19)
                         ]
                 ]
                     |> column [ spacing 10 ]
@@ -481,13 +490,17 @@ viewGenerator model =
                         , paddingXY 15 10
                         , Background.color green
                         , Border.rounded 5
+                        , Font.size (fork model.isMobile 17 19)
                         ]
           ]
             |> column [ alignRight ]
         ]
             |> row [ width fill ]
       ]
-        |> column []
+        |> column
+            [ width fill
+                |> whenAttr model.isMobile
+            ]
     , model.message
         |> whenJust
             (\txt ->
@@ -498,7 +511,7 @@ viewGenerator model =
         |> List.map
             (\key ->
                 [ text key.pubkey
-                    |> el [ Font.size 13 ]
+                    |> el [ Font.size (fork model.isMobile 11 13) ]
                 , downloadAs
                     [ hover
                     , padding 5
@@ -562,7 +575,7 @@ viewGenerator model =
             |> row [ spacing 10 ]
       ]
         |> List.intersperse (text "|")
-        |> row [ width fill, spaceEvenly, Font.size 15, blockFont ]
+        |> row [ width fill, spaceEvenly, Font.size (fork model.isMobile 11 15), blockFont ]
         |> when (model.count > 0)
     ]
         |> column
@@ -1265,6 +1278,22 @@ wrapBox =
 
 fadeIn =
     style "animation" "fadeIn 1s"
+
+
+viewNav model =
+    [ navBtn model.view ("Mint " ++ bang) ViewHome
+    , navBtn model.view "Vanity Generator" ViewGenerator
+    , image [ height <| px 26 ]
+        { src = "/github.png"
+        , description = ""
+        }
+        |> linkOut "https://github.com/ronanyeah/pow-dapp" [ alignRight, padding 3 ]
+    ]
+        |> row
+            [ spacing 10
+            , width fill
+            , Font.size (fork model.isMobile 16 19)
+            ]
 
 
 bang =
