@@ -210,8 +210,16 @@ async function createXXX(): Promise<[string, string, string]> {
   return [start, middle, end];
 }
 
-async function addressFromBytes(solanaKeypair: Uint8Array): Promise<string> {
-  return getAddressFromPublicKey((await parseKeypair(solanaKeypair)).publicKey);
+async function addressFromBytes(keypairBytes: Uint8Array) {
+  return getAddressFromPublicKey(
+    await crypto.subtle.importKey(
+      "raw",
+      keypairBytes.slice(32),
+      "Ed25519",
+      true,
+      ["verify"]
+    )
+  );
 }
 
 async function parseKeypair(solanaKeypair: Uint8Array): Promise<CryptoKeyPair> {
