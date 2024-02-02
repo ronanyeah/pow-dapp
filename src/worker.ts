@@ -20,40 +20,35 @@ type Criteria =
       end: string;
     };
 
-  type Counter = number;
-  type KeyPair = CryptoKeyPair;
-
-onmessage = (event: MessageEvent<any>) =>
+onmessage = (event) =>
   (async () => {
     const params: Params = event.data;
 
     const isMatch = (() => {
       const criteria = params.criteria;
-      switch (true) {
-        case "start" in criteria && "end" in criteria:
-          return (addr: string) => addr.startsWith(criteria.start) && addr.endsWith(criteria.end);
-
-        case "start" in criteria:
-          return (addr: string) => addr.startsWith(criteria.start);
-
-        default:
-          return (addr: string) => addr.endsWith(criteria.end || ''); // Use empty string if end is not present
+      if ("start" in criteria && "end" in criteria) {
+        return (addr: string) =>
+          addr.startsWith(criteria.start) && addr.endsWith(criteria.end);
+      } else if ("start" in criteria) {
+        return (addr: string) => addr.startsWith(criteria.start);
+      } else {
+        return (addr: string) => addr.endsWith(criteria.end);
       }
     })();
 
-    let count: Counter = 0;
+    let count = 0;
     const keys: CryptoKeyPair[] = [];
 
     await Promise.all([
       (async () => {
         while (count < params.count) {
           try {
-            const keypair: KeyPair = await crypto.subtle.generateKey("Ed25519", true, [
+            const keypair = await crypto.subtle.generateKey("Ed25519", true, [
               "sign",
               "verify",
             ]);
             keys.push(keypair);
-          } catch (_e: unknown) {
+          } catch (_e) {
             console.error("op1 fail");
           }
           count += 1;
@@ -69,7 +64,7 @@ onmessage = (event: MessageEvent<any>) =>
               if (isMatch(addr)) {
                 postMessage({ match: await exportBytes(keypair) });
               }
-            } catch (_e: unknown) {
+            } catch (_e) {
               console.error("op2 fail");
             }
           } else {
