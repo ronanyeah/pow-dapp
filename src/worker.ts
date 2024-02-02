@@ -29,13 +29,15 @@ onmessage = (event: MessageEvent<any>) =>
 
     const isMatch = (() => {
       const criteria = params.criteria;
-      if ("start" in criteria && "end" in criteria) {
-        return (addr: String) =>
-          addr.startsWith(criteria.start) && addr.endsWith(criteria.end);
-      } else if ("start" in criteria) {
-        return (addr: String) => addr.startsWith(criteria.start);
-      } else {
-        return (addr: String) => addr.endsWith(criteria.end);
+      switch (true) {
+        case "start" in criteria && "end" in criteria:
+          return (addr: string) => addr.startsWith(criteria.start) && addr.endsWith(criteria.end);
+
+        case "start" in criteria:
+          return (addr: string) => addr.startsWith(criteria.start);
+
+        default:
+          return (addr: string) => addr.endsWith(criteria.end || ''); // Use empty string if end is not present
       }
     })();
 
