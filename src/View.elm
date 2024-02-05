@@ -603,6 +603,8 @@ viewInfo model =
             |> el [ titleFont ]
       ]
         |> paragraph [ Font.size 24, mainFont, Font.center ]
+    , "MINTING FEBRUARY 8th, 1PM EST"
+        |> para [ comicFont, Font.center, Font.size 28 ]
 
     --, [ ( bang
     --, para [] "POW is a free mint with a twist."
@@ -652,9 +654,6 @@ viewInfo model =
                     |> row [ spacing 20 ]
             )
         |> column [ width fill, spacing 25, Font.size 17 ]
-    , "MINTING SOON"
-        |> text
-        |> el [ comicFont, centerX, Font.size 32 ]
     ]
         |> column
             [ Background.color white
