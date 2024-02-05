@@ -21,3 +21,8 @@
 ### Benchmark the key generator
 - `npm run worker:build`
 - `npm run benchmark`
+
+
+### Benchmark the key generator with RxJS / tweetnacl  
+- `npm run rxworker:build`
+- `npm run rxbenchmark`
