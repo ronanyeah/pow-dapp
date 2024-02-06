@@ -33,10 +33,11 @@ onmessage = (event) =>
         return (addr: string) => addr.startsWith(criteria.start);
       } else {
         return (addr: string) => addr.endsWith(criteria.end);
-      }
+      } 
     })();
 
     let count = 0;
+    let index = 0;
     const keys: CryptoKeyPair[] = [];
 
     await Promise.all([
@@ -55,18 +56,19 @@ onmessage = (event) =>
         }
       })(),
       (async () => {
-        while (keys.length > 0 || count < params.count) {
-          const keypair = keys.pop();
+        while (keys.length > index || count < params.count) {
+          const keypair = keys[index];
           if (keypair) {
             try {
               const addr = await getAddressFromPublicKey(keypair.publicKey);
 
-              if (isMatch(addr)) {
+              if (typeof isMatch === 'function' && isMatch(addr)) {
                 postMessage({ match: await exportBytes(keypair) });
               }
             } catch (_e) {
               console.error("op2 fail");
             }
+            index++; 
           } else {
             await new Promise((resolve) => setTimeout(() => resolve(true), 0));
           }
