@@ -3,7 +3,9 @@
     "build": "webpack",
     "watch": "webpack serve",
     "benchmark": "node tests/benchmark.js",
+    "rxbenchmark": "node tests/rxbenchmark.js",
     "worker:build": "webpack --config webpack.worker.js",
+    "rxworker:build": "webpack --config webpack.rxworker.js",
     "worker:watch": "webpack serve --config webpack.worker.js"
   },
   "dependencies": {
@@ -25,6 +27,9 @@
     "solana-connect": "^0.1.10",
     "style-loader": "^3.3.3",
     "ts-loader": "^9.4.2",
+    "rxjs": "^7.8.1",
+    "tweetnacl": "^1.0.3",
+    "bs58": "^5.0.0",
     "typescript": "^5.0.2",
     "webpack": "^5.39.1",
     "webpack-cli": "^5.0.1"
