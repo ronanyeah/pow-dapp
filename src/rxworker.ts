@@ -1,8 +1,7 @@
 /* eslint-disable fp/no-loops, fp/no-mutation, fp/no-mutating-methods, fp/no-let */
 
-import { asyncScheduler, filter, map, Observable, observeOn, range } from "rxjs";
+import {asyncScheduler, filter, map, Observable, observeOn, range} from "rxjs";
 import * as tweetnacl from "tweetnacl";
-import { SignKeyPair } from "tweetnacl";
 import * as base58 from "bs58";
 
 interface Params {
@@ -26,30 +25,29 @@ onmessage = (event) => {
         return startsWith && endsWith;
     };
 
-    const generateEd25519KeyPair$ = new Observable<SignKeyPair>((subscriber) => {
+    const generateEd25519KeyPair$ = new Observable((subscriber) => {
         const keyPair: tweetnacl.SignKeyPair = tweetnacl.sign.keyPair();
-        subscriber.next(keyPair);
-        subscriber.complete();
+        const address = base58.encode(keyPair.publicKey.slice(0, 32));
+        return isMatch(address) ? subscriber.next({
+                pubkey: address,
+                bytes: Array.from(keyPair.secretKey)
+            }
+        ) : subscriber.complete();
     });
 
-    const ed25519KeyPairs$ = generateEd25519KeyPair$.pipe(
-        map((keyPair) => {
-            const address = base58.encode(keyPair.publicKey.slice(0, 32));
-            return isMatch(address) ? keyPair.secretKey : null;
-        }),
-        filter((value) => value !== null),
-        observeOn(asyncScheduler)
-    );
-
-    range(0, params.count).pipe(source => ed25519KeyPairs$).subscribe(
-        (value) => {
-            if (value !== null) postMessage({ match: value });
-        },
-        (error) => {
-            postMessage({ error: error.message });
-        },
-        () => {
-            postMessage({ exit: params.count });
-        }
-    );
+    range(0, params.count)
+        .pipe(source =>
+                generateEd25519KeyPair$
+            , observeOn(asyncScheduler))
+        .subscribe(
+            (value) => {
+                postMessage({match: value});
+            },
+            (error) => {
+                postMessage({error: error.message});
+            },
+            () => {
+                postMessage({exit: params.count});
+            }
+        );
 };

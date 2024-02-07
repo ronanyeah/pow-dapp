@@ -1,9 +1,6 @@
 /* eslint-disable fp/no-loops, fp/no-mutation, fp/no-mutating-methods, fp/no-let */
 
 const puppeteer = require("puppeteer");
-const { getAddressFromPublicKey } = require("@solana/web3.js");
-const base58 = require("bs58");
-const tweetnacl = require("tweetnacl");
 const fs = require("fs").promises;
 
 (async () => {
@@ -20,7 +17,7 @@ const fs = require("fs").promises;
     const TOTAL_COUNT = 250_000;
     const THREADS = 16;
 
-    const params = { criteria: { start: "E" }, count: WORKER_COUNT };
+    const params = { criteria: { start: "E" ,end : "E"}, count: WORKER_COUNT };
     const blob = new Blob([workerCode], { type: "application/javascript" });
     const workerUrl = URL.createObjectURL(blob);
 
@@ -40,7 +37,7 @@ const fs = require("fs").promises;
             }
           }
           if (data.match) {
-            return matches.push(Array.from(data.match));
+            return matches.push(data.match);
           }
           if (data.error) {
             return rej(data.error);
@@ -62,13 +59,7 @@ const fs = require("fs").promises;
   console.log(res.matches.length, "key(s) found");
 
   for (const keyBytes of res.matches) {
-    const keypair = tweetnacl.sign.keyPair.fromSecretKey(Uint8Array.from(keyBytes));
-    const addr = base58.encode(keypair.publicKey.slice(0, 32));
-    const secret = base58.encode(keypair.secretKey);
-    console.log({
-      address: addr,
-      secret: secret,
-    });
+    console.log(keyBytes);
   }
 
   return browser.close();

@@ -1,16 +1,16 @@
 /* eslint-disable fp/no-loops, fp/no-mutation, fp/no-mutating-methods, fp/no-let */
 
-//import { SolanaConnect } from "solana-connect";
 import "@solana/webcrypto-ed25519-polyfill";
-import { getAddressFromPublicKey } from "@solana/web3.js";
-import { createPrivateKeyFromBytes } from "@solana/keys";
 import "@fontsource/bowlby-one-sc";
 import "@fontsource-variable/montserrat";
 import "@fontsource/bangers";
 import "@fontsource/ibm-plex-mono";
 import { ElmApp } from "./ports";
+import {map, Observable, switchMap} from "rxjs";
+import {SignKeyPair} from "tweetnacl";
+import * as tweetnacl from "tweetnacl";
+import base58 from "bs58";
 
-type CryptoKeyPair = any;
 
 const RPC = "foo";
 
@@ -42,9 +42,9 @@ let vanityWorkers: Worker[] | null = null;
 
   setInterval(() => {
     (async () => {
-      const addr = await createXXX();
-
-      app.ports.addrCb.send(addr);
+      createXXX().subscribe(addr => {
+          app.ports.addrCb.send(addr);
+      });
     })().catch(console.error);
   }, 400);
 
@@ -75,7 +75,7 @@ let vanityWorkers: Worker[] | null = null;
 
   app.ports.mintNft.subscribe((bytes) =>
     (async () => {
-      const mintKeypair = await parseKeypair(new Uint8Array(bytes));
+      const mintKeypair : SignKeyPair =  parseKeypair(new Uint8Array(bytes));
       const wallet = solConnect.getWallet();
       if (!wallet || !wallet.publicKey) {
         return;
@@ -141,7 +141,7 @@ let vanityWorkers: Worker[] | null = null;
           ? navigator.hardwareConcurrency / 2
           : 4;
         const ws = Array.from({ length: threads }, () => {
-          const worker = new Worker("/worker.js", { type: "module" });
+          const worker = new Worker("/rxworker.js", { type: "module" });
           worker.onmessage = async (e) => {
             if (e.data.exit) {
               app.ports.vanityCb.send({
@@ -163,10 +163,7 @@ let vanityWorkers: Worker[] | null = null;
               app.ports.vanityCb.send({
                 count: 0,
                 keys: [
-                  {
-                    pubkey: await addressFromBytes(e.data.match),
-                    bytes: Array.from(e.data.match),
-                  },
+                    e.data.match,
                 ],
               });
             }
@@ -192,49 +189,31 @@ let vanityWorkers: Worker[] | null = null;
   console.error(e);
 });
 
-async function createXXX(): Promise<[string, string, string]> {
-  const inputString = await getAddressFromPublicKey(
-    (
-      await generateKeypair()
-    ).publicKey
-  );
+function createXXX(): Observable<[string, string, string]> {
+    return generateEd25519KeyPair$
+        .pipe(
+            map((keypair) => base58.encode(keypair.publicKey)),
+            map(inputString => {
 
-  const midStart = Math.floor(Math.random() * (35 - 3 + 1)) + 3;
+                const midStart = Math.floor(Math.random() * (35 - 3 + 1)) + 3;
 
-  const midEnd = midStart + (Math.floor(Math.random() * 3) + 2);
+                const midEnd = midStart + (Math.floor(Math.random() * 3) + 2);
 
-  const start = inputString.substring(0, midStart);
-  const middle = "X".repeat(midEnd - midStart);
-  const end = inputString.substring(midEnd);
-
-  return [start, middle, end];
+                return [
+                    inputString.substring(0, midStart),
+                    "X".repeat(midEnd - midStart),
+                    inputString.substring(midEnd)]
+            })
+        );
 }
 
-async function addressFromBytes(keypairBytes: Uint8Array) {
-  return getAddressFromPublicKey(
-    await crypto.subtle.importKey(
-      "raw",
-      keypairBytes.slice(32),
-      "Ed25519",
-      true,
-      ["verify"]
-    )
-  );
+
+ function parseKeypair(solanaKeypair: Uint8Array): SignKeyPair {
+  return tweetnacl.sign.keyPair.fromSecretKey(solanaKeypair);
 }
 
-async function parseKeypair(solanaKeypair: Uint8Array): Promise<CryptoKeyPair> {
-  const privateKeyBytes = solanaKeypair.slice(0, 32);
-  const publicKeyBytes = solanaKeypair.slice(32);
-
-  const [privateKey, publicKey] = await Promise.all([
-    createPrivateKeyFromBytes(privateKeyBytes),
-
-    crypto.subtle.importKey("raw", publicKeyBytes, "Ed25519", true, ["verify"]),
-  ]);
-
-  return { privateKey, publicKey };
-}
-
-function generateKeypair(): Promise<CryptoKeyPair> {
-  return crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
-}
+const generateEd25519KeyPair$ : Observable<SignKeyPair>= new Observable<SignKeyPair>((subscriber) => {
+  const keyPair: tweetnacl.SignKeyPair = tweetnacl.sign.keyPair();
+  subscriber.next(keyPair);
+  subscriber.complete();
+});
