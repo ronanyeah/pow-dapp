@@ -6,11 +6,14 @@ import Ports
 import Time
 
 
+type alias Key =
+    Ports.Key
+
+
 type alias Model =
     { wallet : Maybe String
     , demoAddress : List String
-    , status : Maybe Int
-    , nftId : Maybe Ports.Key
+    , loadedKeypair : Maybe Ports.Key
     , err : Maybe String
     , idInput : String
     , startInput : String
@@ -20,16 +23,18 @@ type alias Model =
     , idInProg : Int
     , idWaiting : Bool
     , keys : List Ports.Key
-    , vanity : List Ports.Vanity
     , view : View
+    , viewGen : Maybe Bool
     , mintSig : Maybe String
     , walletInUse : Bool
     , isMobile : Bool
     , count : Int
     , grinding : Bool
-    , availability : Dict Int Bool
+    , nftExists : Dict Int Bool
     , rpc : String
-    , message : Maybe String
+    , grindMessage : Maybe String
+    , keypairMessage : Maybe String
+    , searchMessage : Maybe String
     , match : Match
     , screen : Screen
     , startTime : Int
@@ -48,7 +53,6 @@ type View
     | ViewMint
     | ViewAvails
     | ViewGenerator
-    | ViewFaq
 
 
 type Msg
@@ -57,9 +61,8 @@ type Msg
     | FileCb Value
     | WalletCb String
     | AddrCb (List String)
-    | AvailCb Int
     | IdCheckCb (Maybe String)
-    | NftCb Ports.Key
+    | LoadKeypairCb (Maybe Ports.Key)
     | Disconnect
     | Reset
     | SubmitId
@@ -68,15 +71,15 @@ type Msg
     | IdInputChange String
     | EndChange String
     | StartChange String
-    | ContainChange String
     | SetView View
-    | Generate
+    | CountCb Int
     | StopGrind
-    | GrindCb { count : Int, keys : List Ports.Key }
-    | UseKey Ports.Key
+    | GrindCb Ports.Key
     | AccountCheckCb Int (Maybe Bool)
+    | PowGen
+    | SelectNft Ports.Key
     | VanityGen
-    | VanityCb { count : Int, keys : List Ports.Vanity }
+    | SetViewGen Bool
     | GenSelect Match
     | StartTimeCb Int
     | Tick Time.Posix

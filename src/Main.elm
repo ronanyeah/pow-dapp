@@ -22,14 +22,13 @@ main =
 init : Flags -> ( Model, Cmd Msg )
 init flags =
     ( { wallet = Nothing
-      , status = Nothing
+      , keypairMessage = Nothing
       , err = Nothing
-      , nftId = Nothing
+      , loadedKeypair = Nothing
       , isMobile = flags.screen.width < 1024 --|| flags.screen.height < 632
       , screen = flags.screen
       , demoAddress = []
       , keys = []
-      , vanity = []
       , idInput = ""
       , startInput = ""
       , endInput = ""
@@ -38,13 +37,15 @@ init flags =
       , idInProg = 0
       , idWaiting = False
       , view = ViewHome
+      , viewGen = Nothing
       , mintSig = Nothing
       , walletInUse = False
       , count = 0
       , grinding = False
-      , availability = Dict.empty
+      , nftExists = Dict.empty
       , rpc = flags.rpc
-      , message = Nothing
+      , grindMessage = Nothing
+      , searchMessage = Nothing
       , match = MatchStart
       , startTime = 0
 
@@ -60,13 +61,12 @@ subscriptions model =
     Sub.batch
         [ Ports.walletCb WalletCb
         , Ports.disconnect (always Disconnect)
-        , Ports.availabilityCb AvailCb
-        , Ports.nftCb NftCb
+        , Ports.loadKeypairCb LoadKeypairCb
         , Ports.addrCb AddrCb
         , Ports.idExists IdCheckCb
         , Ports.mintCb MintCb
         , Ports.grindCb GrindCb
-        , Ports.vanityCb VanityCb
+        , Ports.countCb CountCb
         , Ports.startTimeCb StartTimeCb
         , Ports.mintErr (always MintErr)
         , if model.grinding then

@@ -9,7 +9,7 @@ import Element.Font as Font
 import Element.Input as Input
 import FormatNumber
 import FormatNumber.Locales exposing (usLocale)
-import Helpers.View exposing (cappedHeight, cappedWidth, style, when, whenAttr, whenJust)
+import Helpers.View exposing (cappedHeight, cappedWidth, onKeydown, style, when, whenAttr, whenJust)
 import Html exposing (Html)
 import Html.Attributes
 import Html.Events
@@ -23,9 +23,9 @@ import Url
 
 view : Model -> Html Msg
 view model =
-    (if model.screen.width >= 1024 then
-        viewWide model
+    (if model.screen.width >= 1150 then
         --viewPalette
+        viewWide model
 
      else
         viewThin model
@@ -43,7 +43,6 @@ view model =
             , height fill
             , Font.size 19
             , mainFont
-            , Background.color white
 
             --, Background.color Colors2.greenDarnerTail
             , Background.gradient
@@ -72,6 +71,8 @@ view model =
                     ]
                         |> List.reverse
                 }
+
+            --, Background.image "/bg.png"
             ]
 
 
@@ -188,16 +189,45 @@ viewWide model =
         |> column
             [ height fill
             , spacing 20
-            , width fill
+            , cappedWidth 500
             , fadeIn
             ]
     , [ viewNav model
-      , case model.view of
+      , (case model.view of
             ViewHome ->
                 viewInfo model
 
-            _ ->
-                viewGenerator model
+            ViewGenerator ->
+                model.viewGen
+                    |> unwrap
+                        ([ para
+                            [ Font.center
+                            , Font.size 25
+                            ]
+                            "Welcome to the POW keypair generator!"
+                         , para [ Font.center, Font.italic ] "What do you want to do?"
+                         , text "Generate a POW NFT"
+                            |> btn (Just (SetViewGen True)) [ padding 10, Border.width 1, centerX ]
+                         , text "Generate a Solana vanity wallet"
+                            |> btn (Just (SetViewGen False)) [ padding 10, Border.width 1, centerX ]
+                         ]
+                            |> column [ spacing 30, width fill, paddingXY 0 40 ]
+                        )
+                        (viewGenerator model)
+
+            ViewMint ->
+                viewMint model
+
+            ViewAvails ->
+                viewAvails model
+        )
+            |> el
+                [ Background.color white
+                , paddingXY (fork model.isMobile 15 30) 20
+                , shadow
+                , height fill
+                , width fill
+                ]
 
       --, viewGenerator model
       --, viewPanel model
@@ -205,12 +235,12 @@ viewWide model =
       ]
         |> column
             [ height fill
-            , width fill
             , fadeIn
+            , width fill
             ]
     ]
         |> row
-            [ width <| px 1024
+            [ width <| px 1150
             , spaceEvenly
             , centerX
             , height fill
@@ -327,8 +357,15 @@ viewThin model =
             ViewHome ->
                 viewInfo model
 
-            _ ->
-                viewGenerator model
+            ViewGenerator ->
+                --viewGenerator model
+                text "mint"
+
+            ViewMint ->
+                viewMint model
+
+            ViewAvails ->
+                text "avails"
       ]
         |> column [ width fill, height fill ]
 
@@ -355,7 +392,7 @@ viewThin model =
             ]
 
 
-viewGenerator model =
+viewGenerator model viewGen =
     let
         start =
             Input.text
@@ -389,7 +426,7 @@ viewGenerator model =
                 , text = model.endInput
                 }
     in
-    [ [ para [ titleFont, Font.size (fork model.isMobile 17 20) ] "Vanity Keypair Generator"
+    [ [ para [ titleFont, Font.size (fork model.isMobile 17 20) ] "Keypair Generator"
       , text "Learn more"
             |> linkOut "https://www.quicknode.com/guides/solana-development/getting-started/how-to-create-a-custom-vanity-wallet-address-using-solana-cli"
                 [ Font.underline
@@ -399,7 +436,58 @@ viewGenerator model =
                 ]
       ]
         |> row [ width fill ]
-    , [ Input.radioRow
+    , [ text "MODE"
+            |> el [ Font.bold ]
+      , [ text "POW"
+            |> btn (Just (SetViewGen True))
+                [ Border.width 1
+                    |> whenAttr viewGen
+                , padding 10
+                ]
+        , text "VANITY"
+            |> btn (Just (SetViewGen False))
+                [ Border.width 1
+                    |> whenAttr (not viewGen)
+                , padding 10
+                ]
+        ]
+            |> row [ spacing 10 ]
+      ]
+        |> row [ spacing 10 ]
+    , if viewGen then
+        if model.grinding then
+            [ [ text "Generation in progress"
+                    |> when (not model.isMobile)
+              , spinner 15
+              ]
+                |> row [ spacing 10, Font.size 13 ]
+            , text "STOP"
+                |> btn (Just StopGrind)
+                    [ titleFont
+                    , Border.width 1
+                    , paddingXY 15 10
+                    , Background.color red
+                    , Border.rounded 5
+                    , alignRight
+                    , Font.size (fork model.isMobile 17 19)
+                    ]
+            ]
+                |> column [ spacing 10, alignRight ]
+
+        else
+            text "START"
+                |> btn (Just PowGen)
+                    [ titleFont
+                    , Border.width 1
+                    , paddingXY 15 10
+                    , Background.color green
+                    , Border.rounded 5
+                    , Font.size (fork model.isMobile 17 19)
+                    , alignRight
+                    ]
+
+      else
+        [ Input.radioRow
             [ paddingXY 10 10
             , width fill
             , spacing 20
@@ -433,37 +521,37 @@ viewGenerator model =
                     |> Input.option MatchBoth
                 ]
             }
-      , [ (case model.match of
-            MatchStart ->
-                start
+        , [ (case model.match of
+                MatchStart ->
+                    start
 
-            MatchEnd ->
-                end
+                MatchEnd ->
+                    end
 
-            MatchBoth ->
-                [ start
-                , end
+                MatchBoth ->
+                    [ start
+                    , end
 
-                --, Input.text
-                --[ width <| px 150
-                --]
-                --{ label =
-                --text "Contains"
-                --|> Input.labelAbove []
-                --, onChange = ContainChange
-                --, placeholder = Nothing
-                --, text = model.containInput
-                --}
-                ]
-                    |> row [ spacing 15 ]
-          )
-            |> el
-                [ Background.color lightBlue
-                , padding 10
-                , Border.roundEach
-                    { bottomLeft = 5, bottomRight = 5, topLeft = 0, topRight = 0 }
-                ]
-        , [ if model.grinding then
+                    --, Input.text
+                    --[ width <| px 150
+                    --]
+                    --{ label =
+                    --text "Contains"
+                    --|> Input.labelAbove []
+                    --, onChange = ContainChange
+                    --, placeholder = Nothing
+                    --, text = model.containInput
+                    --}
+                    ]
+                        |> row [ spacing 15 ]
+            )
+                |> el
+                    [ Background.color lightBlue
+                    , padding 10
+                    , Border.roundEach
+                        { bottomLeft = 5, bottomRight = 5, topLeft = 0, topRight = 0 }
+                    ]
+          , if model.grinding then
                 [ [ text "Generation in progress"
                         |> when (not model.isMobile)
                   , spinner 15
@@ -480,7 +568,7 @@ viewGenerator model =
                         , Font.size (fork model.isMobile 17 19)
                         ]
                 ]
-                    |> column [ spacing 10 ]
+                    |> column [ spacing 10, alignRight ]
 
             else
                 text "START"
@@ -491,45 +579,60 @@ viewGenerator model =
                         , Background.color green
                         , Border.rounded 5
                         , Font.size (fork model.isMobile 17 19)
+                        , alignRight
                         ]
           ]
-            |> column [ alignRight ]
-        ]
             |> row [ width fill ]
-      ]
-        |> column
-            [ width fill
-                |> whenAttr model.isMobile
-            ]
-    , model.message
+        ]
+            |> column [ width fill ]
+    , model.grindMessage
         |> whenJust
             (\txt ->
                 text
                     ("⚠️  " ++ txt)
             )
-    , model.vanity
+    , model.keys
         |> List.map
             (\key ->
-                [ text key.pubkey
-                    |> el [ Font.size (fork model.isMobile 11 13) ]
-                , downloadAs
-                    [ hover
-                    , padding 5
-                    , alignRight
-                    , Background.color white
-                    , Border.rounded 5
-                    , Border.width 1
-                    , Font.size 17
-                    ]
-                    { label = text "Save Key  💾"
-                    , filename = key.pubkey ++ ".json"
-                    , url =
-                        key.bytes
-                            |> JE.list JE.int
-                            |> JE.encode 0
-                            |> Url.percentEncode
-                            |> (++) "data:text/json;charset=utf-8,"
-                    }
+                let
+                    canMint =
+                        key.nft
+                            |> unwrap False
+                                (\nft ->
+                                    Dict.get nft.id model.nftExists
+                                        |> unwrap True not
+                                )
+                in
+                [ renderPow key.parts
+                    |> el [ Font.size (fork model.isMobile 11 15) ]
+                , [ text "Mint Now 💥"
+                        |> btn (Just (SelectNft key))
+                            [ padding 5
+                            , Background.color white
+                            , Border.rounded 5
+                            , Border.width 1
+                            , Font.size 17
+                            ]
+                        |> when canMint
+                  , downloadAs
+                        [ hover
+                        , padding 5
+                        , Background.color white
+                        , Border.rounded 5
+                        , Border.width 1
+                        , Font.size 17
+                        ]
+                        { label = text "Save Key  💾"
+                        , filename = key.pubkey ++ ".json"
+                        , url =
+                            key.bytes
+                                |> JE.list JE.int
+                                |> JE.encode 0
+                                |> Url.percentEncode
+                                |> (++) "data:text/json;charset=utf-8,"
+                        }
+                  ]
+                    |> row [ alignRight, spacing 10 ]
                 ]
                     |> column
                         [ spacing 10
@@ -538,7 +641,6 @@ viewGenerator model =
                         , padding 10
                         , Background.color green
                         , Border.rounded 5
-                        , fadeIn
                         ]
             )
         |> column
@@ -548,25 +650,40 @@ viewGenerator model =
 
             --, Background.color green
             , width fill
-            , spinner 30
-                |> el [ centerX, padding 10 ]
+            , [ spinner 30
+                    |> el [ centerX, padding 10 ]
+              , para
+                    [ Font.center
+                    , Font.size 16
+                    , paddingXY 20 0
+                    ]
+                    "This may take some time, consider using the Solana keygen CLI for faster results."
+              , text "More instructions"
+                    |> btn (Just (SetView ViewAvails))
+                        [ Font.underline
+                        , centerX
+                        , Font.size 16
+                        ]
+              ]
+                |> column [ spacing 20, centerX ]
                 |> inFront
-                |> whenAttr (List.isEmpty model.vanity && model.grinding)
+                |> whenAttr (List.isEmpty model.keys && model.grinding)
             ]
     , [ [ text "Results:"
             |> el [ Font.bold ]
-        , text (String.fromInt (List.length model.vanity))
+        , text (String.fromInt (List.length model.keys))
         ]
             |> row [ spacing 10 ]
       , [ text "Keys checked:"
             |> el [ Font.bold ]
-        , text (String.fromInt (model.count // 1000) ++ "k")
+        , text <| formatKeycount model.count
         ]
             |> row [ spacing 10 ]
       , [ text "KPS:"
             |> el [ Font.bold ]
         , text
             ((kps model.count model.startTime model.now
+                |> (\n -> n / 1000)
                 |> formatFloat
              )
                 ++ "k"
@@ -579,13 +696,10 @@ viewGenerator model =
         |> when (model.count > 0)
     ]
         |> column
-            [ Background.color white
-            , paddingXY (fork model.isMobile 15 20) 20
-            , cappedWidth 650
-            , shadow
-            , spacing 10
+            [ spacing 10
             , height fill
             , scrollbarY
+            , width fill
             ]
 
 
@@ -603,8 +717,12 @@ viewInfo model =
             |> el [ titleFont ]
       ]
         |> paragraph [ Font.size 24, mainFont, Font.center ]
-    , "MINTING FEBRUARY 8th, 1PM EST"
-        |> para [ comicFont, Font.center, Font.size 28 ]
+    , "MINT NOW!"
+        |> para [ comicFont, Font.size 28, padding 10, Border.width 1 ]
+        |> btn (Just (SetView ViewMint))
+            [ centerX
+            , style "animation" "pulse 2s infinite"
+            ]
 
     --, [ ( bang
     --, para [] "POW is a free mint with a twist."
@@ -656,12 +774,7 @@ viewInfo model =
         |> column [ width fill, spacing 25, Font.size 17 ]
     ]
         |> column
-            [ Background.color white
-            , paddingXY (fork model.isMobile 15 30) 20
-
-            --, cappedWidth 650
-            , shadow
-            , spacing 30
+            [ spacing 30
             , height fill
             , scrollbarY
             ]
@@ -671,11 +784,6 @@ viewPanel model =
     [ [ navBtn model.view "Mint" ViewMint
       , navBtn model.view "Search" ViewAvails
       , navBtn model.view "Generator" ViewGenerator
-      , navBtn model.view
-            --"How does this work?"
-            "FAQ"
-            --"Learn More"
-            ViewFaq
       ]
         |> row
             [ spacing 5
@@ -683,364 +791,17 @@ viewPanel model =
             , Font.size (fork model.isMobile 13 19)
             ]
     , (case model.view of
-        ViewFaq ->
-            --viewInfo model
-            text "???"
-                |> el [ centerX ]
-
         ViewHome ->
             none
 
         ViewMint ->
-            let
-                select =
-                    Html.input
-                        [ Html.Attributes.type_ "file"
-                        , Html.Events.on "change"
-                            (JD.map FileCb
-                                (JD.at
-                                    [ "target", "files", "0" ]
-                                    JD.value
-                                )
-                            )
-                        , Html.Attributes.style "padding" "5px"
-                        , Html.Attributes.style "cursor" "pointer"
-                        ]
-                        []
-                        |> Element.html
-                        |> el
-                            [ hover
-                            , Background.color green
-                            , Border.rounded 5
-                            , Border.width 2
-                            ]
-            in
-            [ model.nftId
-                |> unwrap
-                    (if model.walletInUse then
-                        [ text "Keypair loading"
-                        , spinner 30
-                            |> el [ centerX ]
-                        ]
-                            |> column [ spacing 20 ]
-
-                     else
-                        [ para [] "You will need to provide a Solana keypair file"
-                        , select
-                        ]
-                            |> column [ spacing 20 ]
-                    )
-                    (\key ->
-                        [ [ [ text "Solana keypair loaded"
-                            , text "Cancel"
-                                |> btn (Just Reset) [ Font.underline ]
-                            ]
-                                |> row
-                                    [ width fill
-                                    , spaceEvenly
-                                    , Background.color navy
-                                    , Font.color beige
-                                    , padding 10
-                                    ]
-                          , [ renderPow key.parts
-                            ]
-                                |> row
-                                    [ spacing 10
-                                    , paddingXY 15 10
-                                    ]
-                          ]
-                            |> column
-                                [ spacing 0
-                                , Border.width 1
-                                , Border.rounded 7
-                                , Background.color white
-                                ]
-                        , key.nft
-                            |> unwrap
-                                ([ text "Not a valid POW NFT keypair."
-
-                                 --, [ text "The public key needs to gg, followed by a number." ]
-                                 --|> paragraph []
-                                 ]
-                                    |> column
-                                        [ Font.italic
-                                        , width <| px 500
-                                        , spacing 20
-                                        ]
-                                )
-                                (\nft ->
-                                    let
-                                        idStr =
-                                            String.fromInt nft.id
-
-                                        existsM =
-                                            Dict.get nft.id model.availability
-                                    in
-                                    existsM
-                                        |> unwrap (spinner 30 |> el [ centerX ])
-                                            (\exists ->
-                                                if exists then
-                                                    [ text ("NFT #" ++ idStr ++ " has already been claimed")
-                                                        |> el [ Font.italic ]
-                                                    , nftLink key.pubkey
-                                                    ]
-                                                        |> column [ spacing 10 ]
-
-                                                else
-                                                    model.mintSig
-                                                        |> unwrap
-                                                            ([ text ("NFT #" ++ idStr ++ " is available!")
-                                                                |> el [ Font.size 22, centerX ]
-
-                                                             --[ text "ID: #"
-                                                             --, String.fromInt id
-                                                             --|> text
-                                                             --|> el [ Font.bold ]
-                                                             --]
-                                                             --|> row []
-                                                             , text "Connect a Solana wallet to continue"
-                                                             , model.wallet
-                                                                |> unwrap
-                                                                    (text "Select wallet"
-                                                                        |> btn (Just SelectWallet) [ padding 10, Border.width 1 ]
-                                                                    )
-                                                                    (\_ ->
-                                                                        [ text ("💥  Mint POW #" ++ idStr)
-                                                                        , spinner 15
-                                                                            |> when model.walletInUse
-                                                                        ]
-                                                                            |> row [ spacing 10 ]
-                                                                            |> btn (Just (MintNft key.bytes))
-                                                                                [ Border.width 1
-                                                                                , padding 10
-                                                                                , Border.rounded 5
-                                                                                , Background.color white
-                                                                                ]
-                                                                    )
-                                                                |> el [ centerX ]
-                                                             ]
-                                                                |> column [ spacing 20, centerX ]
-                                                            )
-                                                            (\sig ->
-                                                                [ text "Success!"
-                                                                    |> el [ centerX ]
-                                                                , newTabLink [ hover, Font.underline ]
-                                                                    { url =
-                                                                        "https://solana.fm/tx/"
-                                                                            ++ sig
-                                                                            ++ explorerSuffix
-                                                                    , label = text "View transaction"
-                                                                    }
-                                                                ]
-                                                                    |> column [ spacing 20, centerX ]
-                                                            )
-                                            )
-                                )
-                        ]
-                            |> column [ spacing 20 ]
-                    )
-            , model.status
-                |> whenJust
-                    (\status ->
-                        case status of
-                            0 ->
-                                none
-
-                            1 ->
-                                text "Error: Not a valid POW id"
-
-                            2 ->
-                                text "Error: Not a valid keypair file."
-
-                            _ ->
-                                none
-                    )
-            ]
-                |> column
-                    [ spacing 30
-                    ]
+            viewMint model
 
         ViewGenerator ->
-            [ if model.grinding then
-                text "Stop grind"
-                    |> btn (Just StopGrind) [ titleFont ]
-
-              else
-                text "Grind"
-                    |> btn (Just Generate) [ titleFont ]
-            , text ("Checked: " ++ String.fromInt model.count)
-                |> el []
-            , text ("Keys: " ++ String.fromInt (List.length model.keys))
-                |> el []
-            , model.keys
-                |> List.map
-                    (\key ->
-                        let
-                            exists =
-                                key.nft
-                                    |> Maybe.andThen
-                                        (\nft ->
-                                            Dict.get nft.id model.availability
-                                        )
-                        in
-                        [ key.parts
-                            |> renderPow
-                            |> el [ mainFont ]
-
-                        --|> btn
-                        --(if
-                        --exists
-                        --|> Maybe.withDefault False
-                        --then
-                        --Nothing
-                        --else
-                        --Just (UseKey key)
-                        --)
-                        --[]
-                        , [ exists
-                                |> unwrap (text "?")
-                                    (\bl ->
-                                        if bl then
-                                            "❌ taken"
-                                                |> text
-
-                                        else
-                                            "✅ mint now"
-                                                |> text
-                                                |> btn
-                                                    (Just (UseKey key))
-                                                    []
-                                    )
-                          , downloadAs
-                                [ hover
-                                , padding 10
-                                ]
-                                { label = text "💾"
-                                , filename = key.pubkey ++ ".json"
-                                , url =
-                                    key.bytes
-                                        |> JE.list JE.int
-                                        |> JE.encode 0
-                                        |> Url.percentEncode
-                                        |> (++) "data:text/json;charset=utf-8,"
-                                }
-                          ]
-                            |> row [ spaceEvenly, width fill ]
-                        ]
-                            |> column
-                                [ spacing 10
-                                , Border.width 1
-                                , width fill
-                                , padding 5
-                                ]
-                    )
-                |> column [ spacing 5, height fill, scrollbarY ]
-            ]
-                |> column
-                    [ centerX
-                    , spacing 20
-                    , height <| px 400
-                    , width fill
-                    ]
+            none
 
         ViewAvails ->
-            [ [ [ para [] "Enter a number to check if the NFT exists"
-                , para [] "Note: Id's cannot contain any '0' characters."
-                ]
-                    |> column [ spacing 5 ]
-              , [ Input.text
-                    [ width <| px 150
-                    , Html.Attributes.type_ "number"
-                        |> htmlAttribute
-                    , Html.Attributes.maxlength 5
-                        |> htmlAttribute
-                    ]
-                    { label =
-                        --|> Input.labelAbove []
-                        Input.labelHidden ""
-                    , onChange = IdInputChange
-                    , placeholder =
-                        text "12345"
-                            |> Input.placeholder []
-                            |> Just
-                    , text = model.idInput
-                    }
-                , text "Check id"
-                    |> btn
-                        (if model.idWaiting then
-                            Nothing
-
-                         else
-                            Just SubmitId
-                        )
-                        [ padding 10
-                        , Border.width 1
-                        ]
-                , spinner 30
-                    |> when model.idWaiting
-                ]
-                    |> row [ spacing 20 ]
-              ]
-                |> column [ spacing 20 ]
-            , let
-                idStr =
-                    String.fromInt model.idInProg
-              in
-              model.idCheck
-                |> whenJust
-                    (unwrap
-                        ([ text ("NFT #" ++ idStr ++ " is available!")
-                            |> el [ Font.size 22, centerX ]
-                         , text "Get it by using:"
-
-                         --, "solana-keygen grind --gg ---"
-                         --++ idStr
-                         --++ ":1"
-                         --|> text
-                         --|> el
-                         --[ paddingXY 30 15
-                         --, Background.color beige
-                         --]
-                         , [ text "Estimated duration on a laptop:"
-                           , text
-                                (case String.length idStr + 3 of
-                                    4 ->
-                                        "<1 minute"
-
-                                    5 ->
-                                        "~26 minutes"
-
-                                    6 ->
-                                        "~25 hours"
-
-                                    7 ->
-                                        "~1470 hours"
-
-                                    8 ->
-                                        "~9 years"
-
-                                    _ ->
-                                        "Forever"
-                                )
-                           ]
-                            |> row [ spacing 10 ]
-                         , newTabLink [ Font.underline, hover ]
-                            { url = "https://docs.solana.com/cli/install-solana-cli-tools"
-                            , label = text "Install the necessary tools here"
-                            }
-                         ]
-                            |> column [ spacing 20 ]
-                        )
-                        (\addr ->
-                            [ text ("NFT #" ++ idStr ++ " has already been minted")
-                                |> el [ Font.size 22, centerX ]
-                            , nftLink addr
-                            ]
-                                |> column [ spacing 10 ]
-                        )
-                    )
-            ]
-                |> column [ spacing 30 ]
+            viewAvails model
       )
         |> el
             [ Background.color white
@@ -1051,6 +812,300 @@ viewPanel model =
     ]
         |> column
             [ width fill
+            ]
+
+
+viewMint model =
+    let
+        select =
+            Html.input
+                [ Html.Attributes.type_ "file"
+                , Html.Events.on "change"
+                    (JD.map FileCb
+                        (JD.at
+                            [ "target", "files", "0" ]
+                            JD.value
+                        )
+                    )
+                , Html.Attributes.style "padding" "5px"
+                , Html.Attributes.style "cursor" "pointer"
+                ]
+                []
+                |> Element.html
+                |> el
+                    [ hover
+                    , Background.color green
+                    , Border.rounded 5
+                    , Border.width 2
+                    ]
+    in
+    [ model.loadedKeypair
+        |> unwrap
+            (if model.walletInUse then
+                [ text "Keypair loading"
+                , spinner 30
+                    |> el [ centerX ]
+                ]
+                    |> column [ spacing 20 ]
+
+             else
+                [ para [] "You will need to provide a Solana keypair file that begins with 'pow', followed by a number."
+                , text "Examples:"
+                , renderPow [ "pow", "8", "i1DzJkTqEuEPAViZFWheptCohFEhCwzRX7epZCj" ]
+                    |> el [ Font.size 16 ]
+                , renderPow [ "pow", "297", "i8QJcqU8QbdpaHYLCgnvMqVwf3c8DnEcB3ZLg" ]
+                    |> el [ Font.size 16 ]
+                , renderPow [ "pow", "11", "S27f9ju6QP8kBAC3XaVXYFynygkqd6zmjnbaPw" ]
+                    |> el [ Font.size 16 ]
+                , select
+                ]
+                    |> column [ spacing 20 ]
+            )
+            (\key ->
+                [ [ [ text "Solana keypair loaded"
+                    , text "Cancel"
+                        |> btn (Just Reset) [ Font.underline ]
+                    ]
+                        |> row
+                            [ width fill
+                            , spaceEvenly
+                            , Background.color navy
+                            , Font.color beige
+                            , padding 10
+                            ]
+                  , [ renderPow key.parts
+                    ]
+                        |> row
+                            [ spacing 10
+                            , paddingXY 15 10
+                            , Font.size 15
+                            ]
+                  ]
+                    |> column
+                        [ spacing 0
+                        , Border.width 1
+                        , Border.rounded 7
+                        , Background.color white
+                        ]
+                , key.nft
+                    |> unwrap
+                        ([ text "Not a valid POW NFT keypair."
+
+                         --, [ text "The public key needs to gg, followed by a number." ]
+                         --|> paragraph []
+                         ]
+                            |> column
+                                [ Font.italic
+                                , width <| px 500
+                                , spacing 20
+                                ]
+                        )
+                        (\nft ->
+                            let
+                                idStr =
+                                    String.fromInt nft.id
+
+                                existsM =
+                                    Dict.get nft.id model.nftExists
+                            in
+                            existsM
+                                |> unwrap (spinner 30 |> el [ centerX ])
+                                    (\exists ->
+                                        if exists then
+                                            [ text ("POW #" ++ idStr ++ " has already been minted")
+                                                |> el [ Font.italic ]
+                                            , nftLink key.pubkey
+                                            ]
+                                                |> column [ spacing 10 ]
+
+                                        else
+                                            model.mintSig
+                                                |> unwrap
+                                                    ([ text ("POW #" ++ idStr ++ " is available!")
+                                                        |> el [ Font.size 22, centerX ]
+
+                                                     --[ text "ID: #"
+                                                     --, String.fromInt id
+                                                     --|> text
+                                                     --|> el [ Font.bold ]
+                                                     --]
+                                                     --|> row []
+                                                     , text "Connect a Solana wallet to continue"
+                                                     , model.wallet
+                                                        |> unwrap
+                                                            (text "Select wallet"
+                                                                |> btn (Just SelectWallet) [ padding 10, Border.width 1 ]
+                                                            )
+                                                            (\_ ->
+                                                                [ text ("💥  Mint POW #" ++ idStr)
+                                                                , spinner 15
+                                                                    |> when model.walletInUse
+                                                                ]
+                                                                    |> row [ spacing 10 ]
+                                                                    |> btn (Just (MintNft key.bytes))
+                                                                        [ Border.width 1
+                                                                        , padding 10
+                                                                        , Border.rounded 5
+                                                                        , Background.color white
+                                                                        ]
+                                                            )
+                                                        |> el [ centerX ]
+                                                     ]
+                                                        |> column [ spacing 20, centerX ]
+                                                    )
+                                                    (\sig ->
+                                                        [ text "Success!"
+                                                            |> el [ centerX ]
+                                                        , nftLink key.pubkey
+                                                            |> el [ Font.underline ]
+                                                        , newTabLink [ hover, Font.underline ]
+                                                            { url =
+                                                                --"https://solana.fm/tx/"
+                                                                --++ sig
+                                                                --++ explorerSuffix
+                                                                "https://solscan.io/tx/"
+                                                                    ++ sig
+                                                            , label = text "View transaction"
+                                                            }
+                                                        ]
+                                                            |> column [ spacing 20, centerX ]
+                                                    )
+                                    )
+                        )
+                ]
+                    |> column [ spacing 20 ]
+            )
+    , model.keypairMessage
+        |> whenJust
+            (\txt ->
+                text
+                    ("⚠️  " ++ txt)
+            )
+    ]
+        |> column
+            [ spacing 30
+            , width fill
+            ]
+
+
+viewAvails model =
+    [ para [ Font.bold ] "Find your next POW NFT!"
+    , [ [ para [ Font.italic ] "Enter an NFT ID to check if it is available"
+
+        --, para [] "Note: Id's cannot contain any '0' characters."
+        ]
+            |> column [ spacing 5 ]
+      , [ Input.text
+            [ width <| px 150
+            , Html.Attributes.type_ "number"
+                |> htmlAttribute
+            , Html.Attributes.min "1"
+                |> htmlAttribute
+            , Html.Attributes.max "999999"
+                |> htmlAttribute
+            , onKeydown "Enter" SubmitId
+                |> whenAttr (not model.idWaiting)
+            ]
+            { label =
+                --|> Input.labelAbove []
+                Input.labelHidden ""
+            , onChange = IdInputChange
+            , placeholder =
+                text "12345"
+                    |> Input.placeholder []
+                    |> Just
+            , text = model.idInput
+            }
+        , text "Check id"
+            |> btn
+                (if model.idWaiting then
+                    Nothing
+
+                 else
+                    Just SubmitId
+                )
+                [ padding 10
+                , Border.width 1
+                , Background.color white
+                ]
+        , spinner 30
+            |> when model.idWaiting
+        ]
+            |> row [ spacing 20 ]
+      , model.searchMessage
+            |> whenJust
+                (\txt ->
+                    para [ Font.italic ]
+                        ("⚠️  " ++ txt)
+                )
+      ]
+        |> column [ spacing 20 ]
+    , let
+        idStr =
+            String.fromInt model.idInProg
+      in
+      model.idCheck
+        |> whenJust
+            (unwrap
+                ([ text ("POW #" ++ idStr ++ " is available!")
+                    |> el [ Font.size 22, centerX ]
+                 , text "Get it by using:"
+                 , "solana-keygen grind --starts-with pow"
+                    ++ idStr
+                    ++ ":1"
+                    |> text
+                    |> el
+                        [ paddingXY 20 15
+                        , Background.color beige
+                        , Font.size 18
+                        ]
+                 , newTabLink [ Font.underline, hover ]
+                    { url = "https://docs.solana.com/cli/install-solana-cli-tools"
+                    , label = text "Installation guide"
+                    }
+                 , [ text "Estimated duration on a laptop:"
+                   , text
+                        (case String.length idStr + 3 of
+                            4 ->
+                                "<1 minute"
+
+                            5 ->
+                                "~26 minutes"
+
+                            6 ->
+                                "~25 hours"
+
+                            7 ->
+                                "~1470 hours"
+
+                            8 ->
+                                "~9 years"
+
+                            _ ->
+                                "Forever"
+                        )
+                   ]
+                    |> row [ spacing 10 ]
+                    |> when False
+                 , text "Or use the generator tool"
+                    |> btn (Just (SetViewGen True)) [ Font.underline ]
+                 ]
+                    |> column [ spacing 20 ]
+                )
+                (\addr ->
+                    [ text ("NFT #" ++ idStr ++ " has already been minted")
+                        |> el [ Font.size 22, centerX ]
+                    , nftLink addr
+                    ]
+                        |> column [ spacing 10 ]
+                )
+            )
+    ]
+        --|> column [ spacing 30 ]
+        |> column
+            [ spacing 10
+            , height fill
+            , scrollbarY
             ]
 
 
@@ -1221,13 +1276,18 @@ renderPow addr =
                     text txt
                         |> el
                             [ Font.bold
-                            , Font.size 22
+
+                            --, Font.size 20
                             ]
 
                 else
                     text txt
             )
-        |> row [ spacing 1, Font.size 17 ]
+        |> row
+            [ spacing 1
+
+            --, Font.size 16
+            ]
 
 
 spinner : Int -> Element msg
@@ -1241,7 +1301,6 @@ nftLink mint =
         { url =
             "https://solscan.io/token/"
                 ++ mint
-                ++ "?cluster=devnet"
 
         --"https://solana.fm/address/"
         --++ pair.publicKey
@@ -1280,8 +1339,12 @@ fadeIn =
 
 
 viewNav model =
-    [ navBtn model.view ("Mint " ++ bang) ViewHome
-    , navBtn model.view "Vanity Generator" ViewGenerator
+    [ navBtn model.view "🏠" ViewHome
+    , navBtn model.view "Search 🔍" ViewAvails
+    , navBtn model.view "Grind 🎰" ViewGenerator
+
+    --, navBtn model.view "Keygen 🎰" ViewGenerator
+    , navBtn model.view ("Mint " ++ bang) ViewMint
     , image [ height <| px 26 ]
         { src = "/github.png"
         , description = ""
@@ -1342,9 +1405,16 @@ kps txsCount startTime currentTime =
     toFloat txsCount / elapsedTimeInSeconds
 
 
-formatFloat n =
+formatFloat =
     FormatNumber.format
         { usLocale
             | decimals = FormatNumber.Locales.Exact 2
         }
-        (n / 1000)
+
+
+formatKeycount n =
+    if n > 1000000 then
+        formatFloat (toFloat (n // 1000) / 1000) ++ "m"
+
+    else
+        String.fromInt (n // 1000) ++ "k"

@@ -1,32 +1,26 @@
 /* eslint-disable fp/no-loops, fp/no-mutation, fp/no-mutating-methods, fp/no-let */
 
-//import { SolanaConnect } from "solana-connect";
-import "@solana/webcrypto-ed25519-polyfill";
-import { getAddressFromPublicKey } from "@solana/web3.js";
-import { createPrivateKeyFromBytes } from "@solana/keys";
+import { SolanaConnect } from "solana-connect";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import "@fontsource/bowlby-one-sc";
 import "@fontsource-variable/montserrat";
 import "@fontsource/bangers";
 import "@fontsource/ibm-plex-mono";
 import { ElmApp } from "./ports";
-
-type CryptoKeyPair = any;
-
-const RPC = "foo";
-
-// STUBS
-const readRegister: any = {};
-const findRegister: any = {};
-const solConnect: any = {};
-const decon: any = {};
-const readKeypair: any = {};
-const extractMintId: any = {};
+import {
+  launch,
+  buildMintIx,
+  parsePow,
+  findRegister,
+  readRegister,
+  RPC,
+} from "./web3";
 
 const { Elm } = require("./Main.elm");
 
-let vanityWorkers: Worker[] | null = null;
+let keygenWorkers: Worker[] | null = null;
 
-//const solConnect = new SolanaConnect();
+const solConnect = new SolanaConnect();
 
 (async () => {
   const app: ElmApp = Elm.Main.init({
@@ -36,7 +30,7 @@ let vanityWorkers: Worker[] | null = null;
         width: window.innerWidth,
         height: window.innerHeight,
       },
-      rpc: RPC,
+      rpc: RPC.toString(),
     },
   });
 
@@ -48,17 +42,17 @@ let vanityWorkers: Worker[] | null = null;
     })().catch(console.error);
   }, 400);
 
-  //solConnect.onWalletChange((wallet) =>
-  //(async () => {
-  //if (wallet) {
-  //app.ports.walletCb.send(wallet.publicKey!.toString());
-  //} else {
-  //app.ports.disconnect.send(null);
-  //}
-  //})().catch((e) => {
-  //console.error(e);
-  //})
-  //);
+  solConnect.onWalletChange((wallet) =>
+    (async () => {
+      if (wallet) {
+        app.ports.walletCb.send(wallet.publicKey!.toString());
+      } else {
+        app.ports.disconnect.send(null);
+      }
+    })().catch((e) => {
+      console.error(e);
+    })
+  );
 
   //app.ports.log.subscribe((txt: string) => console.log(txt));
 
@@ -66,7 +60,9 @@ let vanityWorkers: Worker[] | null = null;
     (async () => {
       const mint = await readRegister(n);
       app.ports.idExists.send(mint ? mint.toString() : null);
-    })().catch(console.error)
+    })().catch((e) => {
+      console.error(e);
+    })
   );
 
   app.ports.openWalletMenu.subscribe(() => {
@@ -75,22 +71,23 @@ let vanityWorkers: Worker[] | null = null;
 
   app.ports.mintNft.subscribe((bytes) =>
     (async () => {
-      const mintKeypair = await parseKeypair(new Uint8Array(bytes));
+      const mintKeypair = Keypair.fromSecretKey(new Uint8Array(bytes));
       const wallet = solConnect.getWallet();
+
       if (!wallet || !wallet.publicKey) {
         return;
       }
 
-      const id = extractMintId(mintKeypair.publicKey);
-      if (!id) {
+      const pow = parsePow(mintKeypair.publicKey);
+      if (!pow.id) {
         throw Error("Id not parsed");
       }
 
-      console.log(id);
-
-      //const ixns = [buildMintIx(wallet.publicKey, mintKeypair.publicKey, id)];
-      //const sig = await launch(wallet, ixns, [mintKeypair]);
-      //app.ports.mintCb.send(sig);
+      const ixns = [
+        buildMintIx(wallet.publicKey, mintKeypair.publicKey, pow.id),
+      ];
+      const sig = await launch(wallet, ixns, [mintKeypair]);
+      app.ports.mintCb.send(sig);
     })().catch((e) => {
       console.error(e);
       app.ports.mintErr.send(null);
@@ -99,13 +96,15 @@ let vanityWorkers: Worker[] | null = null;
 
   app.ports.fileOut.subscribe((file: File) =>
     (async () => {
-      const kp = await readKeypair(file);
-      const bytes: any[] = []; // Array.from(kp.secretKey);
-      const nft = decon(kp.publicKey);
+      const content = new TextDecoder().decode(await file.arrayBuffer());
+      const bytes = JSON.parse(content);
+
+      const kp = Keypair.fromSecretKey(new Uint8Array(bytes));
+      const nft = parsePow(kp.publicKey);
       const pubStr = kp.publicKey.toString();
 
       if (!nft.id) {
-        return app.ports.nftCb.send({
+        return app.ports.loadKeypairCb.send({
           nft: null,
           pubkey: pubStr,
           bytes,
@@ -115,28 +114,28 @@ let vanityWorkers: Worker[] | null = null;
 
       const register = findRegister(nft.id);
 
-      return app.ports.nftCb.send({
+      return app.ports.loadKeypairCb.send({
         nft: { id: nft.id, register: register.toString() },
         pubkey: pubStr,
         parts: nft.parts,
         bytes,
       });
     })().catch((e) => {
-      app.ports.availabilityCb.send(2);
+      app.ports.loadKeypairCb.send(null);
       console.error(e);
     })
   );
 
   app.ports.stopGrind.subscribe(() => {
-    if (vanityWorkers) {
-      vanityWorkers.forEach((w) => w.terminate());
-      vanityWorkers = null;
+    if (keygenWorkers) {
+      keygenWorkers.forEach((w) => w.terminate());
+      keygenWorkers = null;
     }
   });
 
-  app.ports.vanity.subscribe((obj) =>
+  app.ports.startGrind.subscribe((obj) =>
     (async () => {
-      if (!vanityWorkers) {
+      if (!keygenWorkers) {
         const threads = navigator.hardwareConcurrency
           ? navigator.hardwareConcurrency / 2
           : 4;
@@ -144,31 +143,36 @@ let vanityWorkers: Worker[] | null = null;
           const worker = new Worker("/worker.js", { type: "module" });
           worker.onmessage = async (e) => {
             if (e.data.exit) {
-              app.ports.vanityCb.send({
-                count: e.data.exit,
-                keys: [],
-              });
+              app.ports.countCb.send(e.data.exit);
+
+              // Restart the generation
               worker.postMessage(obj);
             }
-            if (e.data.error) {
-              console.error(e.data.error);
-            }
-            if (e.data.count) {
-              app.ports.vanityCb.send({
-                count: e.data.count,
-                keys: [],
-              });
-            }
             if (e.data.match) {
-              app.ports.vanityCb.send({
-                count: 0,
-                keys: [
-                  {
-                    pubkey: await addressFromBytes(e.data.match),
-                    bytes: Array.from(e.data.match),
-                  },
-                ],
-              });
+              const bytes = e.data.match;
+              const pubkey = new PublicKey(bytes.slice(32));
+              if (obj.criteria) {
+                app.ports.grindCb.send({
+                  pubkey: pubkey.toString(),
+                  bytes: Array.from(e.data.match),
+                  nft: null,
+                  parts: [pubkey.toString()],
+                });
+              } else {
+                const kp = e.data.match;
+
+                const data = parsePow(pubkey);
+                if (!data.id) {
+                  throw Error("no bueno");
+                }
+                const register = findRegister(data.id);
+                app.ports.grindCb.send({
+                  pubkey: pubkey.toString(),
+                  bytes: Array.from(kp),
+                  nft: { id: data.id, register: register.toString() },
+                  parts: data.parts,
+                });
+              }
             }
           };
           worker.onerror = (e) => {
@@ -176,28 +180,20 @@ let vanityWorkers: Worker[] | null = null;
           };
           return worker;
         });
-        vanityWorkers = ws;
+        keygenWorkers = ws;
       }
       app.ports.startTimeCb.send(Date.now());
-      vanityWorkers.forEach((worker) => worker.postMessage(obj));
+      keygenWorkers.forEach((worker) => worker.postMessage(obj));
     })().catch((e) => {
       console.error(e);
     })
   );
-
-  app.ports.generatePow.subscribe(() => {
-    //
-  });
 })().catch((e) => {
   console.error(e);
 });
 
 async function createXXX(): Promise<[string, string, string]> {
-  const inputString = await getAddressFromPublicKey(
-    (
-      await generateKeypair()
-    ).publicKey
-  );
+  const inputString = Keypair.generate().publicKey.toString();
 
   const midStart = Math.floor(Math.random() * (35 - 3 + 1)) + 3;
 
@@ -208,33 +204,4 @@ async function createXXX(): Promise<[string, string, string]> {
   const end = inputString.substring(midEnd);
 
   return [start, middle, end];
-}
-
-async function addressFromBytes(keypairBytes: Uint8Array) {
-  return getAddressFromPublicKey(
-    await crypto.subtle.importKey(
-      "raw",
-      keypairBytes.slice(32),
-      "Ed25519",
-      true,
-      ["verify"]
-    )
-  );
-}
-
-async function parseKeypair(solanaKeypair: Uint8Array): Promise<CryptoKeyPair> {
-  const privateKeyBytes = solanaKeypair.slice(0, 32);
-  const publicKeyBytes = solanaKeypair.slice(32);
-
-  const [privateKey, publicKey] = await Promise.all([
-    createPrivateKeyFromBytes(privateKeyBytes),
-
-    crypto.subtle.importKey("raw", publicKeyBytes, "Ed25519", true, ["verify"]),
-  ]);
-
-  return { privateKey, publicKey };
-}
-
-function generateKeypair(): Promise<CryptoKeyPair> {
-  return crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
 }

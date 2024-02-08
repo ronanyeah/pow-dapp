@@ -7,8 +7,7 @@ interface ElmApp {
 interface Ports {
   log: PortOut<string>;
   checkId: PortOut<number>;
-  vanity: PortOut<any>;
-  generatePow: PortOut<null>;
+  startGrind: PortOut<any>;
   stopGrind: PortOut<null>;
   openWalletMenu: PortOut<null>;
   mintNft: PortOut<number[]>;
@@ -18,17 +17,10 @@ interface Ports {
   walletCb: PortIn<string>;
   startTimeCb: PortIn<number>;
   mintCb: PortIn<string>;
-  grindCb: PortIn<{
-    count: number;
-    keys: Key[];
-  }>;
+  grindCb: PortIn<Key>;
+  countCb: PortIn<number>;
   mintErr: PortIn<null>;
-  nftCb: PortIn<Key>;
-  vanityCb: PortIn<{
-    count: number;
-    keys: Vanity[];
-  }>;
-  availabilityCb: PortIn<number>;
+  loadKeypairCb: PortIn<Key | null>;
   disconnect: PortIn<null>;
 }
 
@@ -50,9 +42,4 @@ interface Key {
   } | null;
 }
 
-interface Vanity {
-  pubkey: string;
-  bytes: number[];
-}
-
-export { ElmApp, Key, Vanity };
+export { ElmApp, Key };

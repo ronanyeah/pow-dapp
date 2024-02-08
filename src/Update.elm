@@ -1,6 +1,6 @@
 module Update exposing (update)
 
-import Dict
+import Dict exposing (Dict)
 import Helpers.Http exposing (jsonResolver)
 import Http
 import Json.Decode as JD
@@ -12,18 +12,19 @@ import Time
 import Types exposing (..)
 
 
+buildParams crit =
+    [ ( "criteria"
+      , crit
+            |> unwrap JE.null JE.object
+      )
+    , ( "count", JE.int 512 )
+    ]
+        |> JE.object
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        UseKey key ->
-            ( { model
-                | view = ViewMint
-                , grinding = False
-                , nftId = Just key
-              }
-            , Ports.stopGrind ()
-            )
-
         Tick key ->
             ( { model
                 | now = Time.posixToMillis key
@@ -38,11 +39,31 @@ update msg model =
             , Cmd.none
             )
 
+        SetViewGen n ->
+            ( { model
+                | viewGen = Just n
+                , grindMessage = Nothing
+                , view = ViewGenerator
+              }
+            , Cmd.none
+            )
+
         GenSelect key ->
             ( { model
                 | match = key
               }
             , Cmd.none
+            )
+
+        PowGen ->
+            ( { model
+                | grinding = True
+                , keys = []
+                , grindMessage = Nothing
+                , count = 0
+              }
+            , buildParams Nothing
+                |> Ports.startGrind
             )
 
         VanityGen ->
@@ -72,72 +93,64 @@ update msg model =
                         |> List.filterMap identity
                         |> List.head
 
-                buildParams crit =
-                    [ ( "criteria"
-                      , crit
-                            |> JE.object
-                      )
-                    , ( "count", JE.int 512 )
-                    ]
-                        |> JE.object
+                exec =
+                    case model.match of
+                        MatchStart ->
+                            model.startInput
+                                |> validate
+                                |> unwrap
+                                    ([ ( "start", JE.string model.startInput )
+                                     ]
+                                        |> Just
+                                        |> buildParams
+                                        |> Ports.startGrind
+                                        |> Ok
+                                    )
+                                    Err
 
-                newModel =
-                    { model
-                        | grinding = True
-                        , vanity = []
-                        , message = Nothing
-                        , count = 0
-                    }
+                        MatchEnd ->
+                            model.endInput
+                                |> validate
+                                |> unwrap
+                                    ([ ( "end", JE.string model.endInput )
+                                     ]
+                                        |> Just
+                                        |> buildParams
+                                        |> Ports.startGrind
+                                        |> Ok
+                                    )
+                                    Err
+
+                        MatchBoth ->
+                            [ validate model.startInput
+                            , validate model.endInput
+                            ]
+                                |> List.filterMap identity
+                                |> List.head
+                                |> unwrap
+                                    ([ ( "end", JE.string model.endInput )
+                                     , ( "start", JE.string model.startInput )
+                                     ]
+                                        |> Just
+                                        |> buildParams
+                                        |> Ports.startGrind
+                                        |> Ok
+                                    )
+                                    Err
             in
-            case model.match of
-                MatchStart ->
-                    model.startInput
-                        |> validate
-                        |> unwrap
-                            ( newModel
-                            , [ ( "start", JE.string model.startInput )
-                              ]
-                                |> buildParams
-                                |> Ports.vanity
-                            )
-                            (\err ->
-                                ( { model | message = Just err }, Cmd.none )
-                            )
+            case exec of
+                Ok cmd ->
+                    ( { model
+                        | grinding = True
+                        , keys = []
+                        , grindMessage = Nothing
+                        , count = 0
+                      }
+                    , cmd
+                    )
 
-                MatchEnd ->
-                    model.endInput
-                        |> validate
-                        |> unwrap
-                            ( newModel
-                            , [ ( "end", JE.string model.endInput )
-                              ]
-                                |> buildParams
-                                |> Ports.vanity
-                            )
-                            (\err ->
-                                ( { model | message = Just err }, Cmd.none )
-                            )
-
-                MatchBoth ->
-                    [ validate model.startInput
-                    , validate model.endInput
-                    ]
-                        |> List.filterMap identity
-                        |> List.head
-                        |> unwrap
-                            ( newModel
-                            , [ ( "end", JE.string model.endInput )
-                              , ( "start", JE.string model.startInput )
-                              ]
-                                |> buildParams
-                                |> Ports.vanity
-                            )
-                            (\err ->
-                                ( { model | message = Just err }, Cmd.none )
-                            )
-
-        Generate ->
-            ( { model | grinding = True }, Ports.generatePow () )
+                Err err ->
+                    ( { model | grindMessage = Just err }, Cmd.none )
 
         StopGrind ->
             ( { model | grinding = False }, Ports.stopGrind () )
@@ -146,27 +159,43 @@ update msg model =
             ( model, Ports.openWalletMenu () )
 
         SubmitId ->
-            String.toInt model.idInput
-                |> unwrap ( model, Cmd.none )
-                    (\n ->
-                        if String.contains "0" model.idInput || n < 1 then
-                            ( model, Cmd.none )
+            if String.contains "0" model.idInput then
+                ( { model
+                    | searchMessage = Just "'0' is not a valid Solana address character."
+                  }
+                , Cmd.none
+                )
 
-                        else
-                            ( { model
-                                | idCheck = Nothing
-                                , idInProg = n
-                                , idWaiting = True
-                              }
-                            , Ports.checkId n
-                            )
-                    )
+            else
+                String.toInt model.idInput
+                    |> unwrap ( model, Cmd.none )
+                        (\n ->
+                            if String.contains "0" model.idInput || n < 1 then
+                                ( model, Cmd.none )
+
+                            else
+                                ( { model
+                                    | idCheck = Nothing
+                                    , idInProg = n
+                                    , idWaiting = True
+                                    , searchMessage = Nothing
+                                  }
+                                , Ports.checkId n
+                                )
+                        )
 
         MintNft bts ->
             ( { model
                 | walletInUse = True
               }
             , Ports.mintNft bts
+            )
+
+        CountCb n ->
+            ( { model
+                | count = model.count + n
+              }
+            , Cmd.none
             )
 
         SetView str ->
@@ -176,20 +205,12 @@ update msg model =
             , Cmd.none
             )
 
-        GrindCb data ->
+        GrindCb key ->
             ( { model
-                | count = model.count + data.count
-                , keys = model.keys ++ data.keys
+                | keys = model.keys ++ [ key ]
               }
-            , data.keys
-                |> List.filterMap .nft
-                |> List.map
-                    (\nft ->
-                        accountExists model.rpc nft.register
-                            |> Task.attempt
-                                (Result.toMaybe >> AccountCheckCb nft.id)
-                    )
-                |> Cmd.batch
+              --, checkRegisterIfNecessary model.nftExists model.rpc key
+            , Cmd.none
             )
 
         MintCb sig ->
@@ -211,13 +232,6 @@ update msg model =
             ( { model
                 | idInput = str
                 , idCheck = Nothing
-              }
-            , Cmd.none
-            )
-
-        ContainChange str ->
-            ( { model
-                | containInput = str
               }
             , Cmd.none
             )
@@ -244,15 +258,15 @@ update msg model =
             , Cmd.none
             )
 
-        AccountCheckCb pubkey res ->
+        AccountCheckCb id res ->
             res
                 |> unwrap
                     ( model, Cmd.none )
-                    (\avail ->
+                    (\exists ->
                         ( { model
-                            | availability =
-                                model.availability
-                                    |> Dict.insert pubkey avail
+                            | nftExists =
+                                model.nftExists
+                                    |> Dict.insert id exists
                           }
                         , Cmd.none
                         )
@@ -267,8 +281,8 @@ update msg model =
 
         Reset ->
             ( { model
-                | status = Nothing
-                , nftId = Nothing
+                | keypairMessage = Nothing
+                , loadedKeypair = Nothing
                 , err = Nothing
                 , mintSig = Nothing
               }
@@ -277,46 +291,30 @@ update msg model =
 
         FileCb val ->
             ( { model
-                | status = Nothing
+                | keypairMessage = Nothing
                 , walletInUse = True
               }
             , Ports.fileOut val
             )
 
-        VanityCb data ->
-            let
-                total =
-                    model.count + data.count
-
-                exit =
-                    --total >= 1000000
-                    False
-            in
+        SelectNft val ->
             ( { model
-                | count = total
-                , vanity = model.vanity ++ data.keys
-                , grinding = not exit
+                | loadedKeypair = Just val
+                , view = ViewMint
+                , grinding = False
+                , mintSig = Nothing
               }
-            , if exit then
-                Ports.stopGrind ()
-
-              else
-                Cmd.none
-            )
-
-        NftCb val ->
-            ( { model
-                | nftId = Just val
-                , walletInUse = False
-              }
-            , val.nft
-                |> unwrap Cmd.none
-                    (\nft ->
-                        nft.register
-                            |> accountExists model.rpc
-                            |> Task.attempt
-                                (Result.toMaybe >> AccountCheckCb nft.id)
-                    )
+            , [ Ports.stopGrind ()
+              , val.nft
+                    |> unwrap Cmd.none
+                        (\nft ->
+                            nft.register
+                                |> accountExists model.rpc
+                                |> Task.attempt
+                                    (Result.toMaybe >> AccountCheckCb nft.id)
+                        )
+              ]
+                |> Cmd.batch
             )
 
         WalletCb val ->
@@ -324,17 +322,55 @@ update msg model =
             , Cmd.none
             )
 
-        AvailCb val ->
-            ( { model
-                | status = Just val
-                , walletInUse = False
-              }
-            , Cmd.none
-            )
+        LoadKeypairCb res ->
+            res
+                |> unwrap
+                    ( { model
+                        | keypairMessage = Just "Keypair file failed to parse."
+                        , walletInUse = False
+                      }
+                    , Cmd.none
+                    )
+                    (\key ->
+                        ( { model
+                            | loadedKeypair = Just key
+                            , walletInUse = False
+                          }
+                        , checkRegisterIfNecessary model.nftExists model.rpc key
+                        )
+                    )
 
         Disconnect ->
             ( model
             , Cmd.none
+            )
+
+
+checkRegisterIfNecessary : Dict Int Bool -> String -> Key -> Cmd Msg
+checkRegisterIfNecessary nftExists rpc key =
+    let
+        maybeCheck =
+            key.nft
+                |> Maybe.andThen
+                    (\nft ->
+                        Dict.get nft.id nftExists
+                            |> unwrap (Just nft)
+                                (\exists ->
+                                    if exists then
+                                        Nothing
+
+                                    else
+                                        Just nft
+                                )
+                    )
+    in
+    maybeCheck
+        |> unwrap Cmd.none
+            (\nft ->
+                nft.register
+                    |> accountExists rpc
+                    |> Task.attempt
+                        (Result.toMaybe >> AccountCheckCb nft.id)
             )
 
 

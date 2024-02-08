@@ -11,12 +11,6 @@ type alias Key =
     }
 
 
-type alias Vanity =
-    { pubkey : String
-    , bytes : List Int
-    }
-
-
 
 -- OUT
 
@@ -27,10 +21,7 @@ port log : String -> Cmd msg
 port checkId : Int -> Cmd msg
 
 
-port vanity : Value -> Cmd msg
-
-
-port generatePow : () -> Cmd msg
+port startGrind : Value -> Cmd msg
 
 
 port stopGrind : () -> Cmd msg
@@ -64,19 +55,16 @@ port startTimeCb : (Int -> msg) -> Sub msg
 port mintCb : (String -> msg) -> Sub msg
 
 
-port grindCb : ({ count : Int, keys : List Key } -> msg) -> Sub msg
+port grindCb : (Key -> msg) -> Sub msg
+
+
+port countCb : (Int -> msg) -> Sub msg
 
 
 port mintErr : (() -> msg) -> Sub msg
 
 
-port nftCb : (Key -> msg) -> Sub msg
-
-
-port vanityCb : ({ count : Int, keys : List Vanity } -> msg) -> Sub msg
-
-
-port availabilityCb : (Int -> msg) -> Sub msg
+port loadKeypairCb : (Maybe Key -> msg) -> Sub msg
 
 
 port disconnect : (() -> msg) -> Sub msg
