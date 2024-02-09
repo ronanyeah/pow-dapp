@@ -180,23 +180,11 @@ async function fetchCollectionSize() {
   return isSome(acct.collectionDetails)
     ? Number(acct.collectionDetails.value.size)
     : 0;
-  //if (isSome(acct.collectionDetails)) {
-  //console.log(
-  //"Collection size:",
-  //acct.collectionDetails.value.size.toString()
-  //);
-  //}
 }
 
 async function fetchRegisters() {
   const accts = await connection.getProgramAccounts(PROGRAM_ID);
-  //console.log(accts);
   return accts.map((acct) => Register.decode(acct.account.data));
-  //for (const acct of accts) {
-  //const gg = accounts.Lock.decode(acct.account.data);
-
-  //console.log(gg.id.toNumber());
-  //}
 }
 
 async function fetchTier(n: number) {
@@ -274,6 +262,50 @@ function toBuffer(str: string) {
   return new TextEncoder().encode(str);
 }
 
+function createXXX(): [string, string, string] {
+  const inputString = Keypair.generate().publicKey.toString();
+
+  const midStart = Math.floor(Math.random() * (35 - 3 + 1)) + 3;
+
+  const midEnd = midStart + (Math.floor(Math.random() * 3) + 2);
+
+  const start = inputString.substring(0, midStart);
+  const middle = "X".repeat(midEnd - midStart);
+  const end = inputString.substring(midEnd);
+
+  return [start, middle, end];
+}
+
+const randN = (min: number, max: number) =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
+
+function createPow(): [string, string, string] {
+  const nums = "123456789";
+
+  const pk = new Keypair().publicKey.toString();
+
+  const max = 40; // 44
+  const min = 40; // 32
+  const maxLen = randN(min, max);
+
+  const id = String(randN(1000, 10_000))
+    .split("")
+    .map((x) => (x === "0" ? String(randN(1, 9)) : x))
+    .join("");
+
+  let suffix = pk.slice(PREFIX.length + id.length, maxLen);
+
+  if (nums.includes(suffix[0])) {
+    const char = pk
+      .split("")
+      .reverse()
+      .find((c) => !nums.includes(c));
+    suffix = char + suffix.slice(1);
+  }
+
+  return [PREFIX, id, suffix];
+}
+
 export {
   launch,
   simulate,
@@ -287,4 +319,5 @@ export {
   parsePow,
   RPC,
   fetchTier,
+  createPow,
 };

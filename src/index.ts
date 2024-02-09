@@ -8,6 +8,7 @@ import "@fontsource/bangers";
 import "@fontsource/ibm-plex-mono";
 import { ElmApp } from "./ports";
 import {
+  createPow,
   launch,
   buildMintIx,
   parsePow,
@@ -35,11 +36,9 @@ const solConnect = new SolanaConnect();
   });
 
   setInterval(() => {
-    (async () => {
-      const addr = await createXXX();
+    const addr = createPow();
 
-      app.ports.addrCb.send(addr);
-    })().catch(console.error);
+    app.ports.addrCb.send(addr);
   }, 400);
 
   solConnect.onWalletChange((wallet) =>
@@ -191,17 +190,3 @@ const solConnect = new SolanaConnect();
 })().catch((e) => {
   console.error(e);
 });
-
-async function createXXX(): Promise<[string, string, string]> {
-  const inputString = Keypair.generate().publicKey.toString();
-
-  const midStart = Math.floor(Math.random() * (35 - 3 + 1)) + 3;
-
-  const midEnd = midStart + (Math.floor(Math.random() * 3) + 2);
-
-  const start = inputString.substring(0, midStart);
-  const middle = "X".repeat(midEnd - midStart);
-  const end = inputString.substring(midEnd);
-
-  return [start, middle, end];
-}

@@ -738,7 +738,7 @@ viewInfo model =
         , [ text "Claiming each POW requires generating a "
           , text "Solana keypair"
                 |> linkOut "https://docs.solana.com/wallet-guide" [ Font.underline ]
-          , text " that contains the ID in a specific format. Exact details will be provided before the mint goes live."
+          , text " that contains the ID in a specific format."
           ]
             |> paragraph []
         )
