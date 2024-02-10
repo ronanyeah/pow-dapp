@@ -914,10 +914,9 @@ viewKeypair model key =
             (\nft ->
                 let
                     idStr =
-                        String.fromInt nft.id ++ "88"
+                        String.fromInt nft.id
                 in
-                --nft.mint
-                Nothing
+                nft.mint
                     |> unwrap
                         (model.mintSig
                             |> unwrap
@@ -1043,50 +1042,62 @@ viewAvails model =
       model.idCheck
         |> whenJust
             (unwrap
-                ([ text ("POW #" ++ idStr ++ " is available!")
-                    |> el [ Font.size 22, centerX ]
-                 , text "Get it by using:"
-                 , "solana-keygen grind --starts-with pow"
-                    ++ idStr
-                    ++ ":1"
-                    |> text
-                    |> el
-                        [ paddingXY 20 15
-                        , Background.color beige
-                        , Font.size 18
-                        ]
-                 , newTabLink [ Font.underline, hover ]
-                    { url = "https://docs.solana.com/cli/install-solana-cli-tools"
-                    , label = text "Installation guide"
-                    }
-                 , [ text "Estimated duration on a laptop:"
-                   , text
-                        (case String.length idStr + 3 of
-                            4 ->
-                                "<1 minute"
+                (if String.length idStr == 5 || String.length idStr == 6 then
+                    [ para [ Font.center ] "Minting of Tier 5 and Tier 6 NFTs has ended. This NFT was not minted."
+                    , [ text "Total Minted"
+                            |> el [ Font.bold ]
+                      , text "Tier 5: 5561"
+                      , text "Tier 6: 930"
+                      ]
+                        |> column [ spacing 10 ]
+                    ]
+                        |> column [ spacing 20 ]
 
-                            5 ->
-                                "~26 minutes"
+                 else
+                    [ text ("POW #" ++ idStr ++ " is available!")
+                        |> el [ Font.size 22, centerX ]
+                    , text "Get it by using:"
+                    , "solana-keygen grind --starts-with pow"
+                        ++ idStr
+                        ++ ":1"
+                        |> text
+                        |> el
+                            [ paddingXY 20 15
+                            , Background.color beige
+                            , Font.size 18
+                            ]
+                    , newTabLink [ Font.underline, hover ]
+                        { url = "https://docs.solana.com/cli/install-solana-cli-tools"
+                        , label = text "Installation guide"
+                        }
+                    , [ text "Estimated duration on a laptop:"
+                      , text
+                            (case String.length idStr + 3 of
+                                4 ->
+                                    "<1 minute"
 
-                            6 ->
-                                "~25 hours"
+                                5 ->
+                                    "~26 minutes"
 
-                            7 ->
-                                "~1470 hours"
+                                6 ->
+                                    "~25 hours"
 
-                            8 ->
-                                "~9 years"
+                                7 ->
+                                    "~1470 hours"
 
-                            _ ->
-                                "Forever"
-                        )
-                   ]
-                    |> row [ spacing 10 ]
-                    |> when False
-                 , text "Or use the generator tool"
-                    |> btn (Just (SetViewGen True)) [ Font.underline ]
-                 ]
-                    |> column [ spacing 20 ]
+                                8 ->
+                                    "~9 years"
+
+                                _ ->
+                                    "Forever"
+                            )
+                      ]
+                        |> row [ spacing 10 ]
+                        |> when False
+                    , text "Or use the generator tool"
+                        |> btn (Just (SetViewGen True)) [ Font.underline ]
+                    ]
+                        |> column [ spacing 20 ]
                 )
                 (\addr ->
                     [ text ("NFT #" ++ idStr ++ " has already been minted")
