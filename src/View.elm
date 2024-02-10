@@ -703,7 +703,7 @@ viewGenerator model viewGen =
             ]
 
 
-viewInfo model =
+viewInfo _ =
     [ text ("MINT GUIDE   " ++ bang)
         |> el [ centerX, Font.size 35, comicFont ]
         |> when False
@@ -914,40 +914,51 @@ viewKeypair model key =
             (\nft ->
                 let
                     idStr =
-                        String.fromInt nft.id
-
-                    existsM =
-                        Dict.get nft.id model.nftExists
+                        String.fromInt nft.id ++ "88"
                 in
-                --(spinner 30 |> el [ centerX ])
-                nft.mint
+                --nft.mint
+                Nothing
                     |> unwrap
                         (model.mintSig
                             |> unwrap
-                                ([ text ("POW #" ++ idStr ++ " is available!")
-                                    |> el [ Font.size 22, centerX ]
-                                 , text "Connect a Solana wallet to continue"
-                                 , model.wallet
-                                    |> unwrap
-                                        (text "Select wallet"
-                                            |> btn (Just SelectWallet) [ padding 10, Border.width 1 ]
-                                        )
-                                        (\_ ->
-                                            [ text ("💥  Mint POW #" ++ idStr)
-                                            , spinner 15
-                                                |> when model.walletInUse
-                                            ]
-                                                |> row [ spacing 10 ]
-                                                |> btn (Just (MintNft key.bytes))
-                                                    [ Border.width 1
-                                                    , padding 10
-                                                    , Border.rounded 5
-                                                    , Background.color white
-                                                    ]
-                                        )
-                                    |> el [ centerX ]
-                                 ]
-                                    |> column [ spacing 20, centerX ]
+                                (if String.length idStr == 5 || String.length idStr == 6 then
+                                    [ text ("POW #" ++ idStr)
+                                        |> el [ Font.size 22, centerX, Font.bold ]
+                                    , para [ Font.center ] "Minting of Tier 5 and Tier 6 NFTs has ended. Please save this Keypair, it will be used in a future proof-of-work verification."
+                                    , [ text "Total Minted"
+                                            |> el [ Font.bold ]
+                                      , text "Tier 5: 5561"
+                                      , text "Tier 6: 930"
+                                      ]
+                                        |> column [ spacing 10 ]
+                                    ]
+                                        |> column [ spacing 20 ]
+
+                                 else
+                                    [ text ("POW #" ++ idStr ++ " is available!")
+                                        |> el [ Font.size 22, centerX ]
+                                    , text "Connect a Solana wallet to continue"
+                                    , model.wallet
+                                        |> unwrap
+                                            (text "Select wallet"
+                                                |> btn (Just SelectWallet) [ padding 10, Border.width 1 ]
+                                            )
+                                            (\_ ->
+                                                [ text ("💥  Mint POW #" ++ idStr)
+                                                , spinner 15
+                                                    |> when model.walletInUse
+                                                ]
+                                                    |> row [ spacing 10 ]
+                                                    |> btn (Just (MintNft key.bytes))
+                                                        [ Border.width 1
+                                                        , padding 10
+                                                        , Border.rounded 5
+                                                        , Background.color white
+                                                        ]
+                                            )
+                                        |> el [ centerX ]
+                                    ]
+                                        |> column [ spacing 20, centerX ]
                                 )
                                 (\sig ->
                                     [ text "Success!"
