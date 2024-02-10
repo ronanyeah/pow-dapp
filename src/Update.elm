@@ -335,8 +335,17 @@ update msg model =
                         ( { model
                             | loadedKeypair = Just key
                             , walletInUse = False
+                            , nftExists =
+                                key.nft
+                                    |> unwrap
+                                        model.nftExists
+                                        (\nft ->
+                                            model.nftExists
+                                                |> Dict.insert nft.id
+                                                    (nft.mint /= Nothing)
+                                        )
                           }
-                        , checkRegisterIfNecessary model.nftExists model.rpc key
+                        , Cmd.none
                         )
                     )
 

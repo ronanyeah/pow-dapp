@@ -861,120 +861,7 @@ viewMint model =
                 ]
                     |> column [ spacing 20 ]
             )
-            (\key ->
-                [ [ [ text "Solana keypair loaded"
-                    , text "Cancel"
-                        |> btn (Just Reset) [ Font.underline ]
-                    ]
-                        |> row
-                            [ width fill
-                            , spaceEvenly
-                            , Background.color navy
-                            , Font.color beige
-                            , padding 10
-                            ]
-                  , [ renderPow key.parts
-                    ]
-                        |> row
-                            [ spacing 10
-                            , paddingXY 15 10
-                            , Font.size 15
-                            ]
-                  ]
-                    |> column
-                        [ spacing 0
-                        , Border.width 1
-                        , Border.rounded 7
-                        , Background.color white
-                        ]
-                , key.nft
-                    |> unwrap
-                        ([ text "Not a valid POW NFT keypair."
-
-                         --, [ text "The public key needs to gg, followed by a number." ]
-                         --|> paragraph []
-                         ]
-                            |> column
-                                [ Font.italic
-                                , width <| px 500
-                                , spacing 20
-                                ]
-                        )
-                        (\nft ->
-                            let
-                                idStr =
-                                    String.fromInt nft.id
-
-                                existsM =
-                                    Dict.get nft.id model.nftExists
-                            in
-                            existsM
-                                |> unwrap (spinner 30 |> el [ centerX ])
-                                    (\exists ->
-                                        if exists then
-                                            [ text ("POW #" ++ idStr ++ " has already been minted")
-                                                |> el [ Font.italic ]
-                                            , nftLink key.pubkey
-                                            ]
-                                                |> column [ spacing 10 ]
-
-                                        else
-                                            model.mintSig
-                                                |> unwrap
-                                                    ([ text ("POW #" ++ idStr ++ " is available!")
-                                                        |> el [ Font.size 22, centerX ]
-
-                                                     --[ text "ID: #"
-                                                     --, String.fromInt id
-                                                     --|> text
-                                                     --|> el [ Font.bold ]
-                                                     --]
-                                                     --|> row []
-                                                     , text "Connect a Solana wallet to continue"
-                                                     , model.wallet
-                                                        |> unwrap
-                                                            (text "Select wallet"
-                                                                |> btn (Just SelectWallet) [ padding 10, Border.width 1 ]
-                                                            )
-                                                            (\_ ->
-                                                                [ text ("💥  Mint POW #" ++ idStr)
-                                                                , spinner 15
-                                                                    |> when model.walletInUse
-                                                                ]
-                                                                    |> row [ spacing 10 ]
-                                                                    |> btn (Just (MintNft key.bytes))
-                                                                        [ Border.width 1
-                                                                        , padding 10
-                                                                        , Border.rounded 5
-                                                                        , Background.color white
-                                                                        ]
-                                                            )
-                                                        |> el [ centerX ]
-                                                     ]
-                                                        |> column [ spacing 20, centerX ]
-                                                    )
-                                                    (\sig ->
-                                                        [ text "Success!"
-                                                            |> el [ centerX ]
-                                                        , nftLink key.pubkey
-                                                            |> el [ Font.underline ]
-                                                        , newTabLink [ hover, Font.underline ]
-                                                            { url =
-                                                                --"https://solana.fm/tx/"
-                                                                --++ sig
-                                                                --++ explorerSuffix
-                                                                "https://solscan.io/tx/"
-                                                                    ++ sig
-                                                            , label = text "View transaction"
-                                                            }
-                                                        ]
-                                                            |> column [ spacing 20, centerX ]
-                                                    )
-                                    )
-                        )
-                ]
-                    |> column [ spacing 20 ]
-            )
+            (viewKeypair model)
     , model.keypairMessage
         |> whenJust
             (\txt ->
@@ -988,13 +875,113 @@ viewMint model =
             ]
 
 
+viewKeypair model key =
+    [ [ [ text "Solana keypair loaded"
+        , text "Cancel"
+            |> btn (Just Reset) [ Font.underline ]
+        ]
+            |> row
+                [ width fill
+                , spaceEvenly
+                , Background.color navy
+                , Font.color beige
+                , padding 10
+                ]
+      , [ renderPow key.parts
+        ]
+            |> row
+                [ spacing 10
+                , paddingXY 15 10
+                , Font.size 15
+                ]
+      ]
+        |> column
+            [ spacing 0
+            , Border.width 1
+            , Border.rounded 7
+            , Background.color white
+            ]
+    , key.nft
+        |> unwrap
+            ([ text "Not a valid POW NFT keypair."
+             ]
+                |> column
+                    [ Font.italic
+                    , width <| px 500
+                    , spacing 20
+                    ]
+            )
+            (\nft ->
+                let
+                    idStr =
+                        String.fromInt nft.id
+
+                    existsM =
+                        Dict.get nft.id model.nftExists
+                in
+                --(spinner 30 |> el [ centerX ])
+                nft.mint
+                    |> unwrap
+                        (model.mintSig
+                            |> unwrap
+                                ([ text ("POW #" ++ idStr ++ " is available!")
+                                    |> el [ Font.size 22, centerX ]
+                                 , text "Connect a Solana wallet to continue"
+                                 , model.wallet
+                                    |> unwrap
+                                        (text "Select wallet"
+                                            |> btn (Just SelectWallet) [ padding 10, Border.width 1 ]
+                                        )
+                                        (\_ ->
+                                            [ text ("💥  Mint POW #" ++ idStr)
+                                            , spinner 15
+                                                |> when model.walletInUse
+                                            ]
+                                                |> row [ spacing 10 ]
+                                                |> btn (Just (MintNft key.bytes))
+                                                    [ Border.width 1
+                                                    , padding 10
+                                                    , Border.rounded 5
+                                                    , Background.color white
+                                                    ]
+                                        )
+                                    |> el [ centerX ]
+                                 ]
+                                    |> column [ spacing 20, centerX ]
+                                )
+                                (\sig ->
+                                    [ text "Success!"
+                                        |> el [ centerX ]
+                                    , nftLink key.pubkey
+                                        |> el [ Font.underline ]
+                                    , newTabLink [ hover, Font.underline ]
+                                        { url =
+                                            --"https://solana.fm/tx/"
+                                            --++ sig
+                                            --++ explorerSuffix
+                                            "https://solscan.io/tx/"
+                                                ++ sig
+                                        , label = text "View transaction"
+                                        }
+                                    ]
+                                        |> column [ spacing 20, centerX ]
+                                )
+                        )
+                        (\mint ->
+                            [ text ("POW #" ++ idStr ++ " has already been minted")
+                                |> el [ Font.italic ]
+                            , nftLink mint
+                            ]
+                                |> column [ spacing 10 ]
+                        )
+            )
+    ]
+        |> column [ spacing 20 ]
+
+
 viewAvails model =
     [ para [ Font.bold ] "Find your next POW NFT!"
-    , [ [ para [ Font.italic ] "Enter an NFT ID to check if it is available"
-
-        --, para [] "Note: Id's cannot contain any '0' characters."
-        ]
-            |> column [ spacing 5 ]
+    , [ para [ Font.italic ] "Enter an NFT ID to check if it is available"
       , [ Input.text
             [ width <| px 150
             , Html.Attributes.type_ "number"
@@ -1006,9 +993,7 @@ viewAvails model =
             , onKeydown "Enter" SubmitId
                 |> whenAttr (not model.idWaiting)
             ]
-            { label =
-                --|> Input.labelAbove []
-                Input.labelHidden ""
+            { label = Input.labelHidden ""
             , onChange = IdInputChange
             , placeholder =
                 text "12345"

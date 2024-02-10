@@ -57,8 +57,8 @@ const solConnect = new SolanaConnect();
 
   app.ports.checkId.subscribe((n) =>
     (async () => {
-      const mint = await readRegister(n);
-      app.ports.idExists.send(mint ? mint.toString() : null);
+      const [_, register] = await readRegister(n);
+      app.ports.idExists.send(register ? register.mint.toString() : null);
     })().catch((e) => {
       console.error(e);
     })
@@ -111,10 +111,14 @@ const solConnect = new SolanaConnect();
         });
       }
 
-      const register = findRegister(nft.id);
+      const [register, data] = await readRegister(nft.id);
 
       return app.ports.loadKeypairCb.send({
-        nft: { id: nft.id, register: register.toString() },
+        nft: {
+          id: nft.id,
+          register: register.toString(),
+          mint: data ? data.mint.toString() : null,
+        },
         pubkey: pubStr,
         parts: nft.parts,
         bytes,
@@ -168,7 +172,11 @@ const solConnect = new SolanaConnect();
                 app.ports.grindCb.send({
                   pubkey: pubkey.toString(),
                   bytes: Array.from(kp),
-                  nft: { id: data.id, register: register.toString() },
+                  nft: {
+                    id: data.id,
+                    register: register.toString(),
+                    mint: null,
+                  },
                   parts: data.parts,
                 });
               }

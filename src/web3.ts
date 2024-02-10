@@ -121,10 +121,9 @@ const buildMintIx = (wallet: PublicKey, mint: PublicKey, id: number) => {
   );
 };
 
-async function readRegister(n: number): Promise<PublicKey | null> {
+async function readRegister(n: number): Promise<[PublicKey, Register | null]> {
   const register = findRegister(n);
-  const acct = await Register.fetch(connection, register, PROGRAM_ID);
-  return acct ? acct.mint : acct;
+  return [register, await Register.fetch(connection, register, PROGRAM_ID)];
 }
 
 function findRegister(n: number): PublicKey {

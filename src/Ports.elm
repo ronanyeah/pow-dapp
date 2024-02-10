@@ -7,7 +7,12 @@ type alias Key =
     { pubkey : String
     , parts : List String
     , bytes : List Int
-    , nft : Maybe { id : Int, register : String }
+    , nft :
+        Maybe
+            { id : Int
+            , register : String
+            , mint : Maybe String
+            }
     }
 
 

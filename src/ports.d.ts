@@ -39,6 +39,7 @@ interface Key {
   nft: {
     id: number;
     register: string;
+    mint: string | null;
   } | null;
 }
 
