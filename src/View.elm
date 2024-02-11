@@ -162,24 +162,8 @@ viewWide model =
                 ]
         ]
             |> row [ spacing 10, centerX ]
-
-      --, model.demoAddress
-      --|> List.indexedMap
-      --(\n txt ->
-      --if n == 0 then
-      --text txt
-      --else if n == 1 then
-      --text txt
-      --|> el
-      --[ Font.bold
-      --, Font.size 22
-      --]
-      --else
-      --text txt
-      --)
-      --|> row [ centerX, spacing 1 ]
-      --, viewGenerator model
-      --|> el [ width fill, height fill ]
+      , viewMintStatus model
+            |> el [ alignBottom, width fill ]
       , viewBanner model
             |> el
                 [ width fill
@@ -248,6 +232,136 @@ viewWide model =
             , padding 30
             , spacing 30
             ]
+
+
+viewMintStatus : Model -> Element Msg
+viewMintStatus model =
+    [ text ("Mint Status " ++ bang)
+        |> el [ titleFont, Font.size 17 ]
+    , viewMintRow 1
+        9
+        (Just 9)
+        MintedOut
+        [ "pow"
+        , "4"
+        , "GJAuA9HB1tZnyAxTyw7VKz2wovgcq9sezJoKqM4"
+        ]
+    , viewMintRow 2
+        81
+        (Just 81)
+        MintedOut
+        [ "pow"
+        , "39"
+        , "Q4JyQCnNPkAdBUqDvhGmehDeAueycrpmZJ5Aur"
+        ]
+    , viewMintRow 3
+        729
+        (Just 729)
+        MintedOut
+        [ "pow"
+        , "985"
+        , "Q4pDoFu2717KWq9otDP6chkiTdXbb2B7eKAwo"
+        ]
+    , viewMintRow 4
+        6534
+        (Just 6561)
+        InProgress
+        [ "pow"
+        , "4269"
+        , "mWh13DW3DvgBTuZyA33gr1KX2GcsQMhXumgX"
+        ]
+    , viewMintRow 5
+        5561
+        Nothing
+        Closed
+        [ "pow"
+        , "56136"
+        , "HjhNPQZfTujY9c4Ecr8GPFGM1vXm1T6GMc5"
+        ]
+    , viewMintRow 6
+        930
+        Nothing
+        Closed
+        [ "pow"
+        , "745335"
+        , "Mx3r2vfoZPUVSk2hUNSXAt57QWFup2o4wx"
+        ]
+    , viewMintRow 7
+        176
+        Nothing
+        Closed
+        [ "pow"
+        , "9385746"
+        , "KAZpMXnUq8WFjaHSPBsemLVcSXbcBfa6p"
+        ]
+    , viewMintRow 8
+        31
+        Nothing
+        Closed
+        [ "pow"
+        , "14227828"
+        , "u7Hoyk6GL3CqwzJpTPxNQPbraXunpkMd"
+        ]
+    , viewMintRow 9
+        3
+        Nothing
+        InProgress
+        [ "pow"
+        , "537113567"
+        , "RAdU8GRzPjsZDB3sHn2RqFa82yki4ph"
+        ]
+    , viewMintRow 10
+        0
+        Nothing
+        InProgress
+        []
+    , para [ Font.italic, Font.size 14 ] "Note: '0' is not a valid character in Solana addresses, so cannot be in a POW ID."
+    ]
+        |> column
+            [ spacing 10
+            , padding 10
+            , Background.color white
+            , width fill
+            , Font.size 15
+            , Border.width 1
+            ]
+
+
+viewMintRow tier count max status addr =
+    [ [ text ("Tier " ++ String.fromInt tier ++ ":")
+            |> el [ Font.bold ]
+      , text
+            (String.fromInt count
+                ++ (max
+                        |> unwrap ""
+                            (\n -> "/" ++ String.fromInt n)
+                   )
+            )
+      , (case status of
+            MintedOut ->
+                "✅"
+
+            InProgress ->
+                "🔍"
+
+            Closed ->
+                "🔒"
+        )
+            |> text
+      ]
+        |> row [ spacing 10 ]
+    , if List.isEmpty addr then
+        text "???"
+
+      else
+        newTabLink [ hover, Font.size 15 ]
+            { url =
+                "https://solscan.io/token/"
+                    ++ String.concat addr
+            , label = renderPowTrunc addr True
+            }
+    ]
+        |> row [ spacing 10, width fill, spaceEvenly ]
 
 
 viewThin : Model -> Element Msg
@@ -1270,6 +1384,10 @@ navBtn v txt v_ =
 
 
 renderPow addr =
+    renderPowTrunc addr False
+
+
+renderPowTrunc addr trunc =
     addr
         |> List.indexedMap
             (\n txt ->
@@ -1288,7 +1406,13 @@ renderPow addr =
                             ]
 
                 else
-                    text txt
+                    text
+                        (if trunc then
+                            String.left 15 txt ++ "..."
+
+                         else
+                            txt
+                        )
             )
         |> row
             [ spacing 1

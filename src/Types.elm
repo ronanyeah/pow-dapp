@@ -95,3 +95,9 @@ type Match
     = MatchStart
     | MatchEnd
     | MatchBoth
+
+
+type MintStatus
+    = MintedOut
+    | InProgress
+    | Closed
