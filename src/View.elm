@@ -229,7 +229,7 @@ viewWide model =
             , spaceEvenly
             , centerX
             , height fill
-            , cappedHeight 800
+            , cappedHeight 820
             , padding 30
             , spacing 30
             ]
@@ -876,6 +876,11 @@ viewInfo _ =
       , ( "🎨"
         , [ text "Each POW tier will have a different piece of placeholder art. A future generative art reveal is planned, with unique PFPs for every NFT." ]
             |> paragraph []
+        )
+      , ( "🌌"
+        , text "What is the Tier Z / Anomaly trait?"
+            |> linkOut "https://twitter.com/pow_mint/status/1756766034285977829"
+                [ Font.underline ]
         )
       ]
         |> List.map
