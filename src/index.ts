@@ -143,7 +143,7 @@ const solConnect = new SolanaConnect();
           ? navigator.hardwareConcurrency / 2
           : 4;
         const ws = Array.from({ length: threads }, () => {
-          const worker = new Worker("/worker.js", { type: "module" });
+          const worker = new Worker("/worker2.js", { type: "module" });
           worker.onmessage = async (e) => {
             if (e.data.exit) {
               app.ports.countCb.send(e.data.exit);
