@@ -3,6 +3,7 @@
     "build": "webpack",
     "watch": "webpack serve",
     "benchmark": "node tests/benchmark.js",
+    "benchmark2": "node tests/benchmark2.js",
     "worker:build": "webpack --config webpack.worker.js",
     "worker2:build": "webpack --config webpack.worker2.js",
     "worker:watch": "webpack serve --config webpack.worker.js",
