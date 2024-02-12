@@ -27,7 +27,6 @@ onmessage = async (event) => {
   const isMatch = (() => {
     const criteria = params.criteria;
     if (!criteria) {
-      //const regex = /^b[1-9]\d*/;
       const regex = /^pow[1-9]\d*/;
       return (addr: string) => regex.test(addr);
     } else if ("start" in criteria && "end" in criteria) {
@@ -43,40 +42,41 @@ onmessage = async (event) => {
   let count = 0;
   const keys: CryptoKeyPair[] = [];
 
-  await Promise.all([
-    (async () => {
-      while (count < params.count) {
-        try {
-          const keypair = await crypto.subtle.generateKey("Ed25519", true, [
-            "sign",
-            "verify",
-          ]);
-          keys.push(keypair);
-        } catch (_e) {
-          console.error("op1 fail");
-        }
+  const generateKeyPairs = async () => {
+    while (count < params.count) {
+      try {
+        const keypair = await crypto.subtle.generateKey("Ed25519", true, [
+          "sign",
+          "verify",
+        ]);
+        keys.push(keypair);
         count += 1;
+      } catch (_e) {
+        console.error("Key pair generation failed");
       }
-    })(),
-    (async () => {
-      while (keys.length > 0 || count < params.count) {
-        const keypair = keys.pop();
-        if (keypair) {
-          try {
-            const addr = await getAddressFromPublicKey(keypair.publicKey);
+    }
+  };
 
-            if (isMatch(addr)) {
-              postMessage({ match: await exportBytes(keypair) });
-            }
-          } catch (_e) {
-            console.error("op2 fail");
+  const processKeyPairs = async () => {
+    while (keys.length > 0 || count < params.count) {
+      const keypair = keys.pop();
+      if (keypair) {
+        try {
+          const addr = await getAddressFromPublicKey(keypair.publicKey);
+
+          if (isMatch(addr)) {
+            postMessage({ match: await exportBytes(keypair) });
           }
-        } else {
-          await new Promise((resolve) => setTimeout(() => resolve(true), 0));
+        } catch (_e) {
+          console.error("Address processing failed");
         }
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 0));
       }
-    })(),
-  ]);
+    }
+  };
+
+  await Promise.all([generateKeyPairs(), processKeyPairs()]);
 
   postMessage({ exit: count });
 };

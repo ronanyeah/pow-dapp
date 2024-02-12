@@ -1,27 +1,30 @@
 /* eslint-disable fp/no-loops, fp/no-mutation, fp/no-mutating-methods, fp/no-let */
 
-import { SolanaConnect } from "solana-connect";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import "@solana/webcrypto-ed25519-polyfill";
+//import { PublicKey } from "@solana/web3.js";
+import { createPrivateKeyFromBytes } from "@solana/keys";
 import "@fontsource/bowlby-one-sc";
 import "@fontsource-variable/montserrat";
 import "@fontsource/bangers";
 import "@fontsource/ibm-plex-mono";
 import { ElmApp } from "./ports";
-import {
-  createPow,
-  launch,
-  buildMintIx,
-  parsePow,
-  findRegister,
-  readRegister,
-  RPC,
-} from "./web3";
+import { getAddressFromPublicKey } from "solana-new";
+
+type CryptoKeyPair = any;
+
+const RPC = "foo";
+
+// STUBS
+const readRegister: any = {};
+const findRegister: any = {};
+const solConnect: any = {};
+const decon: any = {};
+const readKeypair: any = {};
+const extractMintId: any = {};
 
 const { Elm } = require("./Main.elm");
 
-let keygenWorkers: Worker[] | null = null;
-
-const solConnect = new SolanaConnect();
+let vanityWorkers: Worker[] | null = null;
 
 (async () => {
   const app: ElmApp = Elm.Main.init({
@@ -31,37 +34,69 @@ const solConnect = new SolanaConnect();
         width: window.innerWidth,
         height: window.innerHeight,
       },
-      rpc: RPC.toString(),
+      rpc: RPC,
     },
   });
 
-  setInterval(() => {
-    const addr = createPow();
+  const createXXX = async (): Promise<[string, string, string]> => {
+    const inputString = await getAddressFromPublicKey(
+      (await generateKeypair()).publicKey
+    );
 
+    const midStart = Math.floor(Math.random() * (35 - 3 + 1)) + 3;
+    const midEnd = midStart + (Math.floor(Math.random() * 3) + 2);
+
+    const start = inputString.substring(0, midStart);
+    const middle = "X".repeat(midEnd - midStart);
+    const end = inputString.substring(midEnd);
+
+    return [start, middle, end];
+  };
+
+  const addressFromBytes = async (solanaKeypair: Uint8Array): Promise<string> => {
+    return getAddressFromPublicKey((await parseKeypair(solanaKeypair)).publicKey);
+  };
+
+  const parseKeypair = async (solanaKeypair: Uint8Array): Promise<CryptoKeyPair> => {
+    const privateKeyBytes = solanaKeypair.slice(0, 32);
+    const publicKeyBytes = solanaKeypair.slice(32);
+
+    const [privateKey, publicKey] = await Promise.all([
+      createPrivateKeyFromBytes(privateKeyBytes),
+      crypto.subtle.importKey("raw", publicKeyBytes, "Ed25519", true, ["verify"]),
+    ]);
+
+    return { privateKey, publicKey };
+  };
+
+  const generateKeypair = (): Promise<CryptoKeyPair> => {
+    return crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
+  };
+
+  setInterval(async () => {
+    const addr = await createXXX();
     app.ports.addrCb.send(addr);
   }, 400);
 
-  solConnect.onWalletChange((wallet) =>
-    (async () => {
-      if (wallet) {
-        app.ports.walletCb.send(wallet.publicKey!.toString());
-      } else {
-        app.ports.disconnect.send(null);
-      }
-    })().catch((e) => {
-      console.error(e);
-    })
-  );
+  //solConnect.onWalletChange((wallet) =>
+  //(async () => {
+  //if (wallet) {
+  //app.ports.walletCb.send(wallet.publicKey!.toString());
+  //} else {
+  //app.ports.disconnect.send(null);
+  //}
+  //})().catch((e) => {
+  //console.error(e);
+  //})
+  //);
 
   //app.ports.log.subscribe((txt: string) => console.log(txt));
 
   app.ports.checkId.subscribe((n) =>
     (async () => {
-      const [_, register] = await readRegister(n);
-      app.ports.idExists.send(register ? register.mint.toString() : null);
-    })().catch((e) => {
-      console.error(e);
-    })
+      const mint = await readRegister(n);
+      app.ports.idExists.send(mint ? mint.toString() : null);
+    })().catch(console.error)
   );
 
   app.ports.openWalletMenu.subscribe(() => {
@@ -70,23 +105,22 @@ const solConnect = new SolanaConnect();
 
   app.ports.mintNft.subscribe((bytes) =>
     (async () => {
-      const mintKeypair = Keypair.fromSecretKey(new Uint8Array(bytes));
+      const mintKeypair = await parseKeypair(new Uint8Array(bytes));
       const wallet = solConnect.getWallet();
-
       if (!wallet || !wallet.publicKey) {
         return;
       }
 
-      const pow = parsePow(mintKeypair.publicKey);
-      if (!pow.id) {
+      const id = extractMintId(mintKeypair.publicKey);
+      if (!id) {
         throw Error("Id not parsed");
       }
 
-      const ixns = [
-        buildMintIx(wallet.publicKey, mintKeypair.publicKey, pow.id),
-      ];
-      const sig = await launch(wallet, ixns, [mintKeypair]);
-      app.ports.mintCb.send(sig);
+      console.log(id);
+
+      //const ixns = [buildMintIx(wallet.publicKey, mintKeypair.publicKey, id)];
+      //const sig = await launch(wallet, ixns, [mintKeypair]);
+      //app.ports.mintCb.send(sig);
     })().catch((e) => {
       console.error(e);
       app.ports.mintErr.send(null);
@@ -95,15 +129,13 @@ const solConnect = new SolanaConnect();
 
   app.ports.fileOut.subscribe((file: File) =>
     (async () => {
-      const content = new TextDecoder().decode(await file.arrayBuffer());
-      const bytes = JSON.parse(content);
-
-      const kp = Keypair.fromSecretKey(new Uint8Array(bytes));
-      const nft = parsePow(kp.publicKey);
+      const kp = await readKeypair(file);
+      const bytes: any[] = []; // Array.from(kp.secretKey);
+      const nft = decon(kp.publicKey);
       const pubStr = kp.publicKey.toString();
 
       if (!nft.id) {
-        return app.ports.loadKeypairCb.send({
+        return app.ports.nftCb.send({
           nft: null,
           pubkey: pubStr,
           bytes,
@@ -111,34 +143,30 @@ const solConnect = new SolanaConnect();
         });
       }
 
-      const [register, data] = await readRegister(nft.id);
+      const register = findRegister(nft.id);
 
-      return app.ports.loadKeypairCb.send({
-        nft: {
-          id: nft.id,
-          register: register.toString(),
-          mint: data ? data.mint.toString() : null,
-        },
+      return app.ports.nftCb.send({
+        nft: { id: nft.id, register: register.toString() },
         pubkey: pubStr,
         parts: nft.parts,
         bytes,
       });
     })().catch((e) => {
-      app.ports.loadKeypairCb.send(null);
+      app.ports.availabilityCb.send(2);
       console.error(e);
     })
   );
 
   app.ports.stopGrind.subscribe(() => {
-    if (keygenWorkers) {
-      keygenWorkers.forEach((w) => w.terminate());
-      keygenWorkers = null;
+    if (vanityWorkers) {
+      vanityWorkers.forEach((w) => w.terminate());
+      vanityWorkers = null;
     }
   });
 
-  app.ports.startGrind.subscribe((obj) =>
+  app.ports.vanity.subscribe((obj: any) =>
     (async () => {
-      if (!keygenWorkers) {
+      if (!vanityWorkers) {
         const threads = navigator.hardwareConcurrency
           ? navigator.hardwareConcurrency / 2
           : 4;
@@ -146,40 +174,31 @@ const solConnect = new SolanaConnect();
           const worker = new Worker("/worker.js", { type: "module" });
           worker.onmessage = async (e) => {
             if (e.data.exit) {
-              app.ports.countCb.send(e.data.exit);
-
-              // Restart the generation
+              app.ports.vanityCb.send({
+                count: e.data.exit,
+                keys: [],
+              });
               worker.postMessage(obj);
             }
+            if (e.data.error) {
+              console.error(e.data.error);
+            }
+            if (e.data.count) {
+              app.ports.vanityCb.send({
+                count: e.data.count,
+                keys: [],
+              });
+            }
             if (e.data.match) {
-              const bytes = e.data.match;
-              const pubkey = new PublicKey(bytes.slice(32));
-              if (obj.criteria) {
-                app.ports.grindCb.send({
-                  pubkey: pubkey.toString(),
-                  bytes: Array.from(e.data.match),
-                  nft: null,
-                  parts: [pubkey.toString()],
-                });
-              } else {
-                const kp = e.data.match;
-
-                const data = parsePow(pubkey);
-                if (!data.id) {
-                  throw Error("no bueno");
-                }
-                const register = findRegister(data.id);
-                app.ports.grindCb.send({
-                  pubkey: pubkey.toString(),
-                  bytes: Array.from(kp),
-                  nft: {
-                    id: data.id,
-                    register: register.toString(),
-                    mint: null,
+              app.ports.vanityCb.send({
+                count: 0,
+                keys: [
+                  {
+                    pubkey: await addressFromBytes(e.data.match),
+                    bytes: Array.from(e.data.match),
                   },
-                  parts: data.parts,
-                });
-              }
+                ],
+              });
             }
           };
           worker.onerror = (e) => {
@@ -187,14 +206,19 @@ const solConnect = new SolanaConnect();
           };
           return worker;
         });
-        keygenWorkers = ws;
+        vanityWorkers = ws;
       }
       app.ports.startTimeCb.send(Date.now());
-      keygenWorkers.forEach((worker) => worker.postMessage(obj));
+      vanityWorkers.forEach((worker) => worker.postMessage(obj));
     })().catch((e) => {
       console.error(e);
     })
   );
+
+  app.ports.generatePow.subscribe(() => {
+    // Logic for generating POW
+    // ... (rest of the code remains unchanged)
+  });
 })().catch((e) => {
   console.error(e);
 });

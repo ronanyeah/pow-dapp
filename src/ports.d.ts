@@ -5,6 +5,11 @@ interface ElmApp {
 }
 
 interface Ports {
+  nftCb: any;
+  availabilityCb: any;
+  vanity: any;
+  vanityCb: any;
+  generatePow: any;
   log: PortOut<string>;
   checkId: PortOut<number>;
   startGrind: PortOut<any>;

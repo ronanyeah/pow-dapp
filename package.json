@@ -1,5 +1,4 @@
-{
-  "scripts": {
+{"scripts": {
     "build": "webpack",
     "watch": "webpack serve",
     "benchmark": "node tests/benchmark.js",

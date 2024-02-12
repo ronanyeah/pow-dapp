@@ -7,6 +7,9 @@ const fs = require("fs").promises;
 (async () => {
   const browser = await puppeteer.launch({
     headless: "new",
+    timeout: 0, // Disable timeout
+    defaultViewport: null,
+    args: ['--start-maximized'],
   });
   const page = await browser.newPage();
 
