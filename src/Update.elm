@@ -6,6 +6,7 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import Maybe.Extra exposing (unwrap)
+import Misc exposing (..)
 import Ports
 import Task exposing (Task)
 import Time
@@ -170,8 +171,19 @@ update msg model =
                 String.toInt model.idInput
                     |> unwrap ( model, Cmd.none )
                         (\n ->
-                            if String.contains "0" model.idInput || n < 1 then
+                            if n < 1 then
                                 ( model, Cmd.none )
+
+                            else if n > u32_MAX then
+                                ( { model
+                                    | searchMessage =
+                                        "The maximum possible ID is "
+                                            ++ String.fromInt u32_MAX
+                                            ++ "."
+                                            |> Just
+                                  }
+                                , Cmd.none
+                                )
 
                             else
                                 ( { model

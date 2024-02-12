@@ -17,6 +17,7 @@ import Img
 import Json.Decode as JD
 import Json.Encode as JE
 import Maybe.Extra exposing (unwrap)
+import Misc exposing (..)
 import Types exposing (..)
 import Url
 
@@ -552,7 +553,7 @@ viewGenerator model viewGen =
         |> row [ width fill ]
     , [ text "MODE"
             |> el [ Font.bold ]
-      , [ text "POW"
+      , [ text ("POW " ++ bang)
             |> btn (Just (SetViewGen True))
                 [ Border.width 1
                     |> whenAttr viewGen
@@ -1001,11 +1002,9 @@ viewKeypair model key =
                 , Font.color beige
                 , padding 10
                 ]
-      , [ renderPow key.parts
-        ]
-            |> row
-                [ spacing 10
-                , paddingXY 15 10
+      , renderPow key.parts
+            |> el
+                [ paddingXY 15 10
                 , Font.size 15
                 ]
       ]
@@ -1015,26 +1014,46 @@ viewKeypair model key =
             , Border.rounded 7
             , Background.color white
             ]
-    , key.nft
-        |> unwrap
-            ([ text "Not a valid POW NFT keypair."
-             ]
-                |> column
-                    [ Font.italic
-                    , width <| px 500
-                    , spacing 20
-                    ]
-            )
-            (\nft ->
-                let
-                    idStr =
-                        String.fromInt nft.id
-                in
-                nft.mint
-                    |> unwrap
-                        (model.mintSig
+    , case model.mintSig of
+        Just sig ->
+            [ text "Success!"
+                |> el [ centerX ]
+            , nftLink key.pubkey
+                |> el [ Font.underline ]
+            , newTabLink [ hover, Font.underline ]
+                { url =
+                    --"https://solana.fm/tx/"
+                    --++ sig
+                    --++ explorerSuffix
+                    "https://solscan.io/tx/"
+                        ++ sig
+                , label = text "View transaction"
+                }
+            ]
+                |> column [ spacing 20, centerX ]
+
+        Nothing ->
+            key.nft
+                |> unwrap
+                    ([ text "Not a valid POW NFT keypair."
+                     ]
+                        |> column
+                            [ Font.italic
+                            , width <| px 500
+                            , spacing 20
+                            ]
+                    )
+                    (\nft ->
+                        let
+                            idStr =
+                                String.fromInt nft.id
+
+                            tier =
+                                String.length idStr
+                        in
+                        nft.mint
                             |> unwrap
-                                (if String.length idStr == 5 || String.length idStr == 6 then
+                                (if tier == 5 || tier == 6 then
                                     [ text ("POW #" ++ idStr)
                                         |> el [ Font.size 22, centerX, Font.bold ]
                                     , para [ Font.center ] "Minting of Tier 5 and Tier 6 NFTs has ended. Please save this Keypair, it will be used in a future proof-of-work verification."
@@ -1046,6 +1065,12 @@ viewKeypair model key =
                                         |> column [ spacing 10 ]
                                     ]
                                         |> column [ spacing 20 ]
+
+                                 else if nft.id > u32_MAX then
+                                    "The maximum possible ID is "
+                                        ++ String.fromInt u32_MAX
+                                        ++ "."
+                                        |> text
 
                                  else
                                     [ text ("POW #" ++ idStr ++ " is available!")
@@ -1073,32 +1098,14 @@ viewKeypair model key =
                                     ]
                                         |> column [ spacing 20, centerX ]
                                 )
-                                (\sig ->
-                                    [ text "Success!"
-                                        |> el [ centerX ]
-                                    , nftLink key.pubkey
-                                        |> el [ Font.underline ]
-                                    , newTabLink [ hover, Font.underline ]
-                                        { url =
-                                            --"https://solana.fm/tx/"
-                                            --++ sig
-                                            --++ explorerSuffix
-                                            "https://solscan.io/tx/"
-                                                ++ sig
-                                        , label = text "View transaction"
-                                        }
+                                (\mint ->
+                                    [ text ("POW #" ++ idStr ++ " has already been minted")
+                                        |> el [ Font.italic ]
+                                    , nftLink mint
                                     ]
-                                        |> column [ spacing 20, centerX ]
+                                        |> column [ spacing 10 ]
                                 )
-                        )
-                        (\mint ->
-                            [ text ("POW #" ++ idStr ++ " has already been minted")
-                                |> el [ Font.italic ]
-                            , nftLink mint
-                            ]
-                                |> column [ spacing 10 ]
-                        )
-            )
+                    )
     ]
         |> column [ spacing 20 ]
 
@@ -1107,12 +1114,12 @@ viewAvails model =
     [ para [ Font.bold ] "Find your next POW NFT!"
     , [ para [ Font.italic ] "Enter an NFT ID to check if it is available"
       , [ Input.text
-            [ width <| px 150
+            [ width <| px 170
             , Html.Attributes.type_ "number"
                 |> htmlAttribute
             , Html.Attributes.min "1"
                 |> htmlAttribute
-            , Html.Attributes.max "999999"
+            , Html.Attributes.max "4294967295"
                 |> htmlAttribute
             , onKeydown "Enter" SubmitId
                 |> whenAttr (not model.idWaiting)
@@ -1178,7 +1185,7 @@ viewAvails model =
                         |> el
                             [ paddingXY 20 15
                             , Background.color beige
-                            , Font.size 18
+                            , Font.size 16
                             ]
                     , newTabLink [ Font.underline, hover ]
                         { url = "https://docs.solana.com/cli/install-solana-cli-tools"
@@ -1208,7 +1215,7 @@ viewAvails model =
                       ]
                         |> row [ spacing 10 ]
                         |> when False
-                    , text "Or use the generator tool"
+                    , text ("Or use the generator tool " ++ bang)
                         |> btn (Just (SetViewGen True)) [ Font.underline ]
                     ]
                         |> column [ spacing 20 ]
@@ -1516,10 +1523,6 @@ para attrs =
 spinAttr : Attribute msg
 spinAttr =
     style "animation" "rotation 0.7s infinite linear"
-
-
-explorerSuffix =
-    "?cluster=devnet-solana"
 
 
 title val =

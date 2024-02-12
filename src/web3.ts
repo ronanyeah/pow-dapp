@@ -281,7 +281,7 @@ const randN = (min: number, max: number) =>
 function createPow(): [string, string, string] {
   const nums = "123456789";
 
-  const pk = new Keypair().publicKey.toString();
+  const pk = Keypair.generate().publicKey.toString();
 
   const max = 40; // 44
   const min = 40; // 32
