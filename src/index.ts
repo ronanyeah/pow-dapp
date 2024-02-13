@@ -53,12 +53,23 @@ const solConnect = new SolanaConnect();
     })
   );
 
-  //app.ports.log.subscribe((txt: string) => console.log(txt));
+  //solConnect.openMenu();
+
+  app.ports.log.subscribe((txt: string) => console.log(txt));
 
   app.ports.checkId.subscribe((n) =>
     (async () => {
       const [_, register] = await readRegister(n);
       app.ports.idExists.send(register ? register.mint.toString() : null);
+    })().catch((e) => {
+      console.error(e);
+    })
+  );
+
+  app.ports.checkKeypairId.subscribe((n) =>
+    (async () => {
+      const [_, register] = await readRegister(n);
+      app.ports.keypairMintCb.send(register ? register.mint.toString() : null);
     })().catch((e) => {
       console.error(e);
     })
@@ -116,8 +127,8 @@ const solConnect = new SolanaConnect();
       return app.ports.loadKeypairCb.send({
         nft: {
           id: nft.id,
+          tier: nft.id.toString().length,
           register: register.toString(),
-          mint: data ? data.mint.toString() : null,
         },
         pubkey: pubStr,
         parts: nft.parts,
@@ -174,8 +185,8 @@ const solConnect = new SolanaConnect();
                   bytes: Array.from(kp),
                   nft: {
                     id: data.id,
+                    tier: data.id.toString().length,
                     register: register.toString(),
-                    mint: null,
                   },
                   parts: data.parts,
                 });

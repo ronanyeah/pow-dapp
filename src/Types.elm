@@ -1,6 +1,7 @@
 module Types exposing (..)
 
 import Dict exposing (Dict)
+import Http
 import Json.Decode exposing (Value)
 import Ports
 import Time
@@ -19,9 +20,15 @@ type alias Model =
     , startInput : String
     , endInput : String
     , containInput : String
-    , idCheck : Maybe (Maybe String)
-    , idInProg : Int
-    , idWaiting : Bool
+    , idCheck :
+        { inProg : Bool
+        , id : Maybe Int
+        , mint : Maybe (Maybe String)
+        }
+    , keypairCheck :
+        { inProg : Bool
+        , mint : Maybe (Maybe String)
+        }
     , keys : List Ports.Key
     , view : View
     , viewGen : Maybe Bool
@@ -30,7 +37,6 @@ type alias Model =
     , isMobile : Bool
     , count : Int
     , grinding : Bool
-    , nftExists : Dict Int Bool
     , rpc : String
     , grindMessage : Maybe String
     , keypairMessage : Maybe String
@@ -61,7 +67,8 @@ type Msg
     | FileCb Value
     | WalletCb String
     | AddrCb (List String)
-    | IdCheckCb (Maybe String)
+    | IdMintCb (Maybe String)
+    | KeypairMintCb (Maybe String)
     | LoadKeypairCb (Maybe Ports.Key)
     | Disconnect
     | Reset
@@ -75,7 +82,7 @@ type Msg
     | CountCb Int
     | StopGrind
     | GrindCb Ports.Key
-    | AccountCheckCb Int (Maybe Bool)
+    | AccountCheckCb Int (Result Http.Error Bool)
     | PowGen
     | SelectNft Ports.Key
     | VanityGen

@@ -160,8 +160,21 @@ update msg model =
             ( model, Ports.openWalletMenu () )
 
         SubmitId ->
+            let
+                newModel =
+                    model
+                        |> (\m ->
+                                { m
+                                    | idCheck =
+                                        { inProg = False
+                                        , mint = Nothing
+                                        , id = Nothing
+                                        }
+                                }
+                           )
+            in
             if String.contains "0" model.idInput then
-                ( { model
+                ( { newModel
                     | searchMessage = Just "'0' is not a valid Solana address character."
                   }
                 , Cmd.none
@@ -169,13 +182,14 @@ update msg model =
 
             else
                 String.toInt model.idInput
-                    |> unwrap ( model, Cmd.none )
+                    |> unwrap
+                        ( model, Cmd.none )
                         (\n ->
                             if n < 1 then
                                 ( model, Cmd.none )
 
                             else if n > u32_MAX then
-                                ( { model
+                                ( { newModel
                                     | searchMessage =
                                         "The maximum possible ID is "
                                             ++ String.fromInt u32_MAX
@@ -186,11 +200,13 @@ update msg model =
                                 )
 
                             else
-                                ( { model
-                                    | idCheck = Nothing
-                                    , idInProg = n
-                                    , idWaiting = True
-                                    , searchMessage = Nothing
+                                ( { newModel
+                                    | searchMessage = Nothing
+                                    , idCheck =
+                                        { inProg = True
+                                        , id = Just n
+                                        , mint = Nothing
+                                        }
                                   }
                                 , Ports.checkId n
                                 )
@@ -243,7 +259,6 @@ update msg model =
         IdInputChange str ->
             ( { model
                 | idInput = str
-                , idCheck = Nothing
               }
             , Cmd.none
             )
@@ -262,26 +277,42 @@ update msg model =
             , Cmd.none
             )
 
-        IdCheckCb exists ->
+        IdMintCb mMint ->
             ( { model
-                | idCheck = Just exists
-                , idWaiting = False
+                | idCheck =
+                    model.idCheck
+                        |> (\ch ->
+                                { ch
+                                    | inProg = False
+                                    , mint = Just mMint
+                                }
+                           )
+              }
+            , Cmd.none
+            )
+
+        KeypairMintCb mMint ->
+            ( { model
+                | keypairCheck =
+                    model.keypairCheck
+                        |> (\kp ->
+                                { kp
+                                    | inProg = False
+                                    , mint = Just mMint
+                                }
+                           )
               }
             , Cmd.none
             )
 
         AccountCheckCb id res ->
-            res
-                |> unwrap
-                    ( model, Cmd.none )
-                    (\exists ->
-                        ( { model
-                            | nftExists =
-                                model.nftExists
-                                    |> Dict.insert id exists
-                          }
-                        , Cmd.none
-                        )
+            case res of
+                Err err ->
+                    ( model, Ports.log "AccountCheckCb err" )
+
+                Ok exists ->
+                    ( model
+                    , Cmd.none
                     )
 
         AddrCb addr ->
@@ -315,16 +346,12 @@ update msg model =
                 , view = ViewMint
                 , grinding = False
                 , mintSig = Nothing
+                , keypairCheck =
+                    { inProg = True, mint = Nothing }
               }
             , [ Ports.stopGrind ()
               , val.nft
-                    |> unwrap Cmd.none
-                        (\nft ->
-                            nft.register
-                                |> accountExists model.rpc
-                                |> Task.attempt
-                                    (Result.toMaybe >> AccountCheckCb nft.id)
-                        )
+                    |> unwrap Cmd.none (.id >> Ports.checkKeypairId)
               ]
                 |> Cmd.batch
             )
@@ -347,17 +374,11 @@ update msg model =
                         ( { model
                             | loadedKeypair = Just key
                             , walletInUse = False
-                            , nftExists =
-                                key.nft
-                                    |> unwrap
-                                        model.nftExists
-                                        (\nft ->
-                                            model.nftExists
-                                                |> Dict.insert nft.id
-                                                    (nft.mint /= Nothing)
-                                        )
+                            , keypairCheck =
+                                { inProg = True, mint = Nothing }
                           }
-                        , Cmd.none
+                        , key.nft
+                            |> unwrap Cmd.none (.id >> Ports.checkKeypairId)
                         )
                     )
 
@@ -391,7 +412,7 @@ checkRegisterIfNecessary nftExists rpc key =
                 nft.register
                     |> accountExists rpc
                     |> Task.attempt
-                        (Result.toMaybe >> AccountCheckCb nft.id)
+                        (AccountCheckCb nft.id)
             )
 
 

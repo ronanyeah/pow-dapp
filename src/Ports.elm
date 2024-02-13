@@ -10,8 +10,8 @@ type alias Key =
     , nft :
         Maybe
             { id : Int
+            , tier : Int
             , register : String
-            , mint : Maybe String
             }
     }
 
@@ -24,6 +24,9 @@ port log : String -> Cmd msg
 
 
 port checkId : Int -> Cmd msg
+
+
+port checkKeypairId : Int -> Cmd msg
 
 
 port startGrind : Value -> Cmd msg
@@ -46,6 +49,9 @@ port fileOut : Value -> Cmd msg
 
 
 port idExists : (Maybe String -> msg) -> Sub msg
+
+
+port keypairMintCb : (Maybe String -> msg) -> Sub msg
 
 
 port addrCb : (List String -> msg) -> Sub msg

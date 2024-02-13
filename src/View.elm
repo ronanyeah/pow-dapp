@@ -710,25 +710,38 @@ viewGenerator model viewGen =
         |> List.map
             (\key ->
                 let
-                    canMint =
+                    tierLabel =
                         key.nft
-                            |> unwrap False
+                            |> whenJust
                                 (\nft ->
-                                    Dict.get nft.id model.nftExists
-                                        |> unwrap True not
+                                    if List.member nft.tier haltedTiers then
+                                        text
+                                            ("Tier "
+                                                ++ String.fromInt nft.tier
+                                                ++ " Mint is closed"
+                                            )
+
+                                    else if List.member nft.tier completedTiers then
+                                        text
+                                            ("Tier "
+                                                ++ String.fromInt nft.tier
+                                                ++ " Mint is completed"
+                                            )
+
+                                    else
+                                        text "Check 🔍"
+                                            |> btn (Just (SelectNft key))
+                                                [ padding 5
+                                                , Background.color white
+                                                , Border.rounded 5
+                                                , Border.width 1
+                                                , Font.size 17
+                                                ]
                                 )
                 in
                 [ renderPow key.parts
                     |> el [ Font.size (fork model.isMobile 11 15) ]
-                , [ text "Mint Now 💥"
-                        |> btn (Just (SelectNft key))
-                            [ padding 5
-                            , Background.color white
-                            , Border.rounded 5
-                            , Border.width 1
-                            , Font.size 17
-                            ]
-                        |> when canMint
+                , [ tierLabel
                   , downloadAs
                         [ hover
                         , padding 5
@@ -1052,62 +1065,67 @@ viewKeypair model key =
                         let
                             idStr =
                                 String.fromInt nft.id
-
-                            tier =
-                                String.length idStr
                         in
-                        nft.mint
-                            |> unwrap
-                                (if List.member tier haltedTiers then
-                                    [ text ("POW #" ++ idStr)
-                                        |> el [ Font.size 22, centerX, Font.bold ]
-                                    , para [ Font.center ]
-                                        ("Minting of Tier "
-                                            ++ String.fromInt tier
-                                            ++ " NFTs is closed. Please save this Keypair, it can be used in a future proof-of-work verification."
-                                        )
-                                    ]
-                                        |> column [ spacing 20 ]
+                        if model.keypairCheck.inProg then
+                            spinner 30
+                                |> el [ centerX ]
 
-                                 else if nft.id > u32_MAX then
-                                    "The maximum possible ID is "
-                                        ++ String.fromInt u32_MAX
-                                        ++ "."
-                                        |> text
+                        else
+                            model.keypairCheck.mint
+                                |> unwrap
+                                    (text "There was a problem.")
+                                    (unwrap
+                                        (if List.member nft.tier haltedTiers then
+                                            [ text ("POW #" ++ idStr)
+                                                |> el [ Font.size 22, centerX, Font.bold ]
+                                            , para [ Font.center ]
+                                                ("Minting of Tier "
+                                                    ++ String.fromInt nft.tier
+                                                    ++ " NFTs is closed. Please save this Keypair, it can be used in a future proof-of-work verification."
+                                                )
+                                            ]
+                                                |> column [ spacing 20 ]
 
-                                 else
-                                    [ text ("POW #" ++ idStr ++ " is available!")
-                                        |> el [ Font.size 22, centerX ]
-                                    , text "Connect a Solana wallet to continue"
-                                    , model.wallet
-                                        |> unwrap
-                                            (text "Select wallet"
-                                                |> btn (Just SelectWallet) [ padding 10, Border.width 1 ]
-                                            )
-                                            (\_ ->
-                                                [ text ("💥  Mint POW #" ++ idStr)
-                                                , spinner 15
-                                                    |> when model.walletInUse
-                                                ]
-                                                    |> row [ spacing 10 ]
-                                                    |> btn (Just (MintNft key.bytes))
-                                                        [ Border.width 1
-                                                        , padding 10
-                                                        , Border.rounded 5
-                                                        , Background.color white
+                                         else if nft.id > u32_MAX then
+                                            "The maximum possible ID is "
+                                                ++ String.fromInt u32_MAX
+                                                ++ "."
+                                                |> text
+
+                                         else
+                                            [ text ("POW #" ++ idStr ++ " is available!")
+                                                |> el [ Font.size 22, centerX ]
+                                            , text "Connect a Solana wallet to continue"
+                                            , model.wallet
+                                                |> unwrap
+                                                    (text "Select wallet"
+                                                        |> btn (Just SelectWallet) [ padding 10, Border.width 1 ]
+                                                    )
+                                                    (\_ ->
+                                                        [ text ("💥  Mint POW #" ++ idStr)
+                                                        , spinner 15
+                                                            |> when model.walletInUse
                                                         ]
-                                            )
-                                        |> el [ centerX ]
-                                    ]
-                                        |> column [ spacing 20, centerX ]
-                                )
-                                (\mint ->
-                                    [ text ("POW #" ++ idStr ++ " has already been claimed")
-                                        |> el [ Font.italic ]
-                                    , nftLinkWTensor mint
-                                    ]
-                                        |> column [ spacing 20 ]
-                                )
+                                                            |> row [ spacing 10 ]
+                                                            |> btn (Just (MintNft key.bytes))
+                                                                [ Border.width 1
+                                                                , padding 10
+                                                                , Border.rounded 5
+                                                                , Background.color white
+                                                                ]
+                                                    )
+                                                |> el [ centerX ]
+                                            ]
+                                                |> column [ spacing 20, centerX ]
+                                        )
+                                        (\mint ->
+                                            [ text ("POW #" ++ idStr ++ " has already been claimed")
+                                                |> el [ Font.italic ]
+                                            , nftLinkWTensor mint
+                                            ]
+                                                |> column [ spacing 20 ]
+                                        )
+                                    )
                     )
     ]
         |> column [ spacing 20 ]
@@ -1125,7 +1143,7 @@ viewAvails model =
             , Html.Attributes.max "4294967295"
                 |> htmlAttribute
             , onKeydown "Enter" SubmitId
-                |> whenAttr (not model.idWaiting)
+                |> whenAttr (not model.idCheck.inProg)
             ]
             { label = Input.labelHidden ""
             , onChange = IdInputChange
@@ -1137,7 +1155,7 @@ viewAvails model =
             }
         , text "Check id"
             |> btn
-                (if model.idWaiting then
+                (if model.idCheck.inProg then
                     Nothing
 
                  else
@@ -1148,7 +1166,7 @@ viewAvails model =
                 , Background.color white
                 ]
         , spinner 30
-            |> when model.idWaiting
+            |> when model.idCheck.inProg
         ]
             |> row [ spacing 20 ]
       , model.searchMessage
@@ -1159,79 +1177,87 @@ viewAvails model =
                 )
       ]
         |> column [ spacing 20 ]
-    , let
-        idStr =
-            String.fromInt model.idInProg
+    , if model.idCheck.inProg then
+        none
 
-        tier =
-            String.length idStr
-      in
-      model.idCheck
-        |> whenJust
-            (unwrap
-                (if List.member tier haltedTiers then
-                    para [ Font.center ]
-                        ("Minting of Tier "
-                            ++ String.fromInt tier
-                            ++ " NFTs is closed. This POW ID was not minted."
-                        )
+      else
+        model.idCheck.id
+            |> whenJust
+                (\id ->
+                    let
+                        idStr =
+                            String.fromInt id
 
-                 else
-                    [ text ("POW #" ++ idStr ++ " is available!")
-                        |> el [ Font.size 22, centerX ]
-                    , text "Get it by using:"
-                    , "solana-keygen grind --starts-with pow"
-                        ++ idStr
-                        ++ ":1"
-                        |> text
-                        |> el
-                            [ paddingXY 20 15
-                            , Background.color beige
-                            , Font.size 16
-                            ]
-                    , newTabLink [ Font.underline, hover ]
-                        { url = "https://docs.solana.com/cli/install-solana-cli-tools"
-                        , label = text "Installation guide"
-                        }
-                    , [ text "Estimated duration on a laptop:"
-                      , text
-                            (case String.length idStr + 3 of
-                                4 ->
-                                    "<1 minute"
+                        tier =
+                            String.length idStr
+                    in
+                    model.idCheck.mint
+                        |> unwrap
+                            (text "There was a problem.")
+                            (unwrap
+                                (if List.member tier haltedTiers then
+                                    para [ Font.center ]
+                                        ("Minting of Tier "
+                                            ++ String.fromInt tier
+                                            ++ " NFTs is closed. This POW ID was not minted."
+                                        )
 
-                                5 ->
-                                    "~26 minutes"
+                                 else
+                                    [ text ("POW #" ++ idStr ++ " is available!")
+                                        |> el [ Font.size 22, centerX ]
+                                    , text "Get it by using:"
+                                    , "solana-keygen grind --starts-with pow"
+                                        ++ idStr
+                                        ++ ":1"
+                                        |> text
+                                        |> el
+                                            [ paddingXY 20 15
+                                            , Background.color beige
+                                            , Font.size 16
+                                            ]
+                                    , newTabLink [ Font.underline, hover ]
+                                        { url = "https://docs.solana.com/cli/install-solana-cli-tools"
+                                        , label = text "Installation guide"
+                                        }
+                                    , [ text "Estimated duration on a laptop:"
+                                      , text
+                                            (case String.length idStr + 3 of
+                                                4 ->
+                                                    "<1 minute"
 
-                                6 ->
-                                    "~25 hours"
+                                                5 ->
+                                                    "~26 minutes"
 
-                                7 ->
-                                    "~1470 hours"
+                                                6 ->
+                                                    "~25 hours"
 
-                                8 ->
-                                    "~9 years"
+                                                7 ->
+                                                    "~1470 hours"
 
-                                _ ->
-                                    "Forever"
+                                                8 ->
+                                                    "~9 years"
+
+                                                _ ->
+                                                    "Forever"
+                                            )
+                                      ]
+                                        |> row [ spacing 10 ]
+                                        |> when False
+                                    , text ("Or use the generator tool " ++ bang)
+                                        |> btn (Just (SetViewGen True)) [ Font.underline ]
+                                    ]
+                                        |> column [ spacing 20 ]
+                                )
+                                (\addr ->
+                                    [ text ("POW #" ++ idStr ++ " has already been claimed")
+                                        |> el [ Font.size 22, centerX ]
+                                    , nftLinkWTensor addr
+                                    ]
+                                        |> column [ spacing 20 ]
+                                )
                             )
-                      ]
-                        |> row [ spacing 10 ]
-                        |> when False
-                    , text ("Or use the generator tool " ++ bang)
-                        |> btn (Just (SetViewGen True)) [ Font.underline ]
-                    ]
-                        |> column [ spacing 20 ]
                 )
-                (\addr ->
-                    [ text ("POW #" ++ idStr ++ " has already been claimed")
-                        |> el [ Font.size 22, centerX ]
-                    , nftLinkWTensor addr
-                    ]
-                        |> column [ spacing 20 ]
-                )
-            )
     ]
-        --|> column [ spacing 30 ]
         |> column
             [ spacing 10
             , height fill

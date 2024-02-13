@@ -29,20 +29,25 @@ init flags =
       , screen = flags.screen
       , demoAddress = []
       , keys = []
+      , keypairCheck =
+            { inProg = False
+            , mint = Nothing
+            }
       , idInput = ""
       , startInput = ""
       , endInput = ""
       , containInput = ""
-      , idCheck = Nothing
-      , idInProg = 0
-      , idWaiting = False
+      , idCheck =
+            { inProg = False
+            , id = Nothing
+            , mint = Nothing
+            }
       , view = ViewHome
       , viewGen = Nothing
       , mintSig = Nothing
       , walletInUse = False
       , count = 0
       , grinding = False
-      , nftExists = Dict.empty
       , rpc = flags.rpc
       , grindMessage = Nothing
       , searchMessage = Nothing
@@ -62,8 +67,9 @@ subscriptions model =
         [ Ports.walletCb WalletCb
         , Ports.disconnect (always Disconnect)
         , Ports.loadKeypairCb LoadKeypairCb
+        , Ports.keypairMintCb KeypairMintCb
         , Ports.addrCb AddrCb
-        , Ports.idExists IdCheckCb
+        , Ports.idExists IdMintCb
         , Ports.mintCb MintCb
         , Ports.grindCb GrindCb
         , Ports.countCb CountCb

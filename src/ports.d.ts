@@ -7,12 +7,14 @@ interface ElmApp {
 interface Ports {
   log: PortOut<string>;
   checkId: PortOut<number>;
+  checkKeypairId: PortOut<number>;
   startGrind: PortOut<any>;
   stopGrind: PortOut<null>;
   openWalletMenu: PortOut<null>;
   mintNft: PortOut<number[]>;
   fileOut: PortOut<any>;
   idExists: PortIn<string | null>;
+  keypairMintCb: PortIn<string | null>;
   addrCb: PortIn<string[]>;
   walletCb: PortIn<string>;
   startTimeCb: PortIn<number>;
@@ -38,8 +40,8 @@ interface Key {
   bytes: number[];
   nft: {
     id: number;
+    tier: number;
     register: string;
-    mint: string | null;
   } | null;
 }
 
