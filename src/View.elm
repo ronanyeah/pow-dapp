@@ -1058,16 +1058,14 @@ viewKeypair model key =
                         in
                         nft.mint
                             |> unwrap
-                                (if tier == 5 || tier == 6 then
+                                (if List.member tier haltedTiers then
                                     [ text ("POW #" ++ idStr)
                                         |> el [ Font.size 22, centerX, Font.bold ]
-                                    , para [ Font.center ] "Minting of Tier 5 and Tier 6 NFTs has ended. Please save this Keypair, it will be used in a future proof-of-work verification."
-                                    , [ text "Total Minted"
-                                            |> el [ Font.bold ]
-                                      , text "Tier 5: 5561"
-                                      , text "Tier 6: 930"
-                                      ]
-                                        |> column [ spacing 10 ]
+                                    , para [ Font.center ]
+                                        ("Minting of Tier "
+                                            ++ String.fromInt tier
+                                            ++ " NFTs is closed. Please save this Keypair, it can be used in a future proof-of-work verification."
+                                        )
                                     ]
                                         |> column [ spacing 20 ]
 
@@ -1164,20 +1162,19 @@ viewAvails model =
     , let
         idStr =
             String.fromInt model.idInProg
+
+        tier =
+            String.length idStr
       in
       model.idCheck
         |> whenJust
             (unwrap
-                (if String.length idStr == 5 || String.length idStr == 6 then
-                    [ para [ Font.center ] "Minting of Tier 5 and Tier 6 NFTs has ended. This NFT was not minted."
-                    , [ text "Total Minted"
-                            |> el [ Font.bold ]
-                      , text "Tier 5: 5561"
-                      , text "Tier 6: 930"
-                      ]
-                        |> column [ spacing 10 ]
-                    ]
-                        |> column [ spacing 20 ]
+                (if List.member tier haltedTiers then
+                    para [ Font.center ]
+                        ("Minting of Tier "
+                            ++ String.fromInt tier
+                            ++ " NFTs is closed. This NFT ID was not minted."
+                        )
 
                  else
                     [ text ("POW #" ++ idStr ++ " is available!")
