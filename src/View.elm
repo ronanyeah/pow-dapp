@@ -1102,11 +1102,11 @@ viewKeypair model key =
                                         |> column [ spacing 20, centerX ]
                                 )
                                 (\mint ->
-                                    [ text ("POW #" ++ idStr ++ " has already been minted")
+                                    [ text ("POW #" ++ idStr ++ " has already been claimed")
                                         |> el [ Font.italic ]
-                                    , nftLink mint
+                                    , nftLinkWTensor mint
                                     ]
-                                        |> column [ spacing 10 ]
+                                        |> column [ spacing 20 ]
                                 )
                     )
     ]
@@ -1173,7 +1173,7 @@ viewAvails model =
                     para [ Font.center ]
                         ("Minting of Tier "
                             ++ String.fromInt tier
-                            ++ " NFTs is closed. This NFT ID was not minted."
+                            ++ " NFTs is closed. This POW ID was not minted."
                         )
 
                  else
@@ -1223,11 +1223,11 @@ viewAvails model =
                         |> column [ spacing 20 ]
                 )
                 (\addr ->
-                    [ text ("NFT #" ++ idStr ++ " has already been minted")
+                    [ text ("POW #" ++ idStr ++ " has already been claimed")
                         |> el [ Font.size 22, centerX ]
-                    , nftLink addr
+                    , nftLinkWTensor addr
                     ]
-                        |> column [ spacing 10 ]
+                        |> column [ spacing 20 ]
                 )
             )
     ]
@@ -1437,7 +1437,7 @@ spinner n =
 
 
 nftLink mint =
-    newTabLink [ hover ]
+    newTabLink [ hover, Font.underline ]
         { url =
             "https://solscan.io/token/"
                 ++ mint
@@ -1445,8 +1445,21 @@ nftLink mint =
         --"https://solana.fm/address/"
         --++ pair.publicKey
         --++ explorerSuffix
-        , label = text "View NFT"
+        , label = text "🔍 View NFT"
         }
+
+
+nftLinkWTensor mint =
+    [ nftLink mint
+    , text "|"
+    , newTabLink [ hover, Font.underline ]
+        { url =
+            "https://tensor.trade/item/"
+                ++ mint
+        , label = text "Bid on Tensor 🎯"
+        }
+    ]
+        |> row [ spacing 15 ]
 
 
 viewX =
