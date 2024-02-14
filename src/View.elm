@@ -263,7 +263,7 @@ viewMintStatus _ =
         , "Q4pDoFu2717KWq9otDP6chkiTdXbb2B7eKAwo"
         ]
     , viewMintRow 4
-        6534
+        6557
         (Just 6561)
         InProgress
         [ "pow"
@@ -303,7 +303,7 @@ viewMintStatus _ =
         , "u7Hoyk6GL3CqwzJpTPxNQPbraXunpkMd"
         ]
     , viewMintRow 9
-        3
+        4
         Nothing
         InProgress
         [ "pow"
