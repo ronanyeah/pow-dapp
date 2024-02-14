@@ -1094,11 +1094,13 @@ viewKeypair model key =
                                          else
                                             [ text ("POW #" ++ idStr ++ " is available!")
                                                 |> el [ Font.size 22, centerX ]
-                                            , text "Connect a Solana wallet to continue"
                                             , model.wallet
                                                 |> unwrap
-                                                    (text "Select wallet"
+                                                    ([ text "Connect a Solana wallet to continue"
+                                                     , text "Select wallet"
                                                         |> btn (Just SelectWallet) [ padding 10, Border.width 1 ]
+                                                     ]
+                                                        |> column [ spacing 20 ]
                                                     )
                                                     (\_ ->
                                                         [ text ("💥  Mint POW #" ++ idStr)
