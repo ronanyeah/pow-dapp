@@ -1,7 +1,6 @@
 module View exposing (view)
 
 import Colors exposing (..)
-import Dict
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -236,7 +235,7 @@ viewWide model =
 
 
 viewMintStatus : Model -> Element Msg
-viewMintStatus model =
+viewMintStatus _ =
     [ text ("Mint Status " ++ bang)
         |> el [ titleFont, Font.size 17 ]
     , viewMintRow 1

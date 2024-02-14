@@ -1,13 +1,18 @@
 module Update exposing (update)
 
-import Dict exposing (Dict)
-import Helpers.Http exposing (jsonResolver)
+import Array exposing (Array)
+import Base64
+import BigInt exposing (BigInt)
+import Helpers.Http exposing (jsonResolver, parseError)
+import Hex
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
+import List.Extra
 import Maybe.Extra exposing (unwrap)
 import Misc exposing (..)
 import Ports
+import Result.Extra exposing (unpack)
 import Task exposing (Task)
 import Time
 import Types exposing (..)
@@ -202,15 +207,22 @@ update msg model =
                             else
                                 ( { newModel
                                     | searchMessage = Nothing
-                                    , idCheck =
-                                        { inProg = True
-                                        , id = Just n
-                                        , mint = Nothing
-                                        }
                                   }
-                                , Ports.checkId n
+                                , Ports.findRegister n
                                 )
                         )
+
+        FindRegisterCb data ->
+            ( { model
+                | idCheck =
+                    { inProg = True
+                    , id = Just data.id
+                    , mint = Nothing
+                    }
+              }
+            , getMint model.rpc data.register
+                |> Task.attempt IdMintCheckCb
+            )
 
         MintNft bts ->
             ( { model
@@ -277,44 +289,6 @@ update msg model =
             , Cmd.none
             )
 
-        IdMintCb mMint ->
-            ( { model
-                | idCheck =
-                    model.idCheck
-                        |> (\ch ->
-                                { ch
-                                    | inProg = False
-                                    , mint = Just mMint
-                                }
-                           )
-              }
-            , Cmd.none
-            )
-
-        KeypairMintCb mMint ->
-            ( { model
-                | keypairCheck =
-                    model.keypairCheck
-                        |> (\kp ->
-                                { kp
-                                    | inProg = False
-                                    , mint = Just mMint
-                                }
-                           )
-              }
-            , Cmd.none
-            )
-
-        AccountCheckCb id res ->
-            case res of
-                Err err ->
-                    ( model, Ports.log "AccountCheckCb err" )
-
-                Ok exists ->
-                    ( model
-                    , Cmd.none
-                    )
-
         AddrCb addr ->
             ( { model
                 | demoAddress = addr
@@ -340,9 +314,9 @@ update msg model =
             , Ports.fileOut val
             )
 
-        SelectNft val ->
+        SelectNft key ->
             ( { model
-                | loadedKeypair = Just val
+                | loadedKeypair = Just key
                 , view = ViewMint
                 , grinding = False
                 , mintSig = Nothing
@@ -350,8 +324,12 @@ update msg model =
                     { inProg = True, mint = Nothing }
               }
             , [ Ports.stopGrind ()
-              , val.nft
-                    |> unwrap Cmd.none (.id >> Ports.checkKeypairId)
+              , key.nft
+                    |> unwrap Cmd.none
+                        (.register
+                            >> getMint model.rpc
+                            >> Task.attempt KeypairMintCheckCb
+                        )
               ]
                 |> Cmd.batch
             )
@@ -378,7 +356,63 @@ update msg model =
                                 { inProg = True, mint = Nothing }
                           }
                         , key.nft
-                            |> unwrap Cmd.none (.id >> Ports.checkKeypairId)
+                            |> unwrap Cmd.none
+                                (.register
+                                    >> getMint model.rpc
+                                    >> Task.attempt KeypairMintCheckCb
+                                )
+                        )
+                    )
+
+        IdMintCheckCb res ->
+            res
+                |> unpack
+                    (\err ->
+                        ( { model
+                            | idCheck =
+                                model.idCheck
+                                    |> (\kp ->
+                                            { kp | inProg = False }
+                                       )
+                          }
+                        , Ports.log (parseError err)
+                        )
+                    )
+                    (\mMint ->
+                        ( { model
+                            | idCheck =
+                                model.idCheck
+                                    |> (\kp ->
+                                            { kp
+                                                | inProg = False
+                                                , mint = Just mMint
+                                            }
+                                       )
+                          }
+                        , Cmd.none
+                        )
+                    )
+
+        KeypairMintCheckCb res ->
+            res
+                |> unpack
+                    (\err ->
+                        ( { model
+                            | keypairCheck =
+                                model.keypairCheck
+                                    |> (\kp ->
+                                            { kp | inProg = False }
+                                       )
+                          }
+                        , Ports.log (parseError err)
+                        )
+                    )
+                    (\mMint ->
+                        ( { model
+                            | keypairCheck =
+                                { inProg = False, mint = Just mMint }
+                          }
+                        , Cmd.none
                         )
                     )
 
@@ -388,36 +422,8 @@ update msg model =
             )
 
 
-checkRegisterIfNecessary : Dict Int Bool -> String -> Key -> Cmd Msg
-checkRegisterIfNecessary nftExists rpc key =
-    let
-        maybeCheck =
-            key.nft
-                |> Maybe.andThen
-                    (\nft ->
-                        Dict.get nft.id nftExists
-                            |> unwrap (Just nft)
-                                (\exists ->
-                                    if exists then
-                                        Nothing
-
-                                    else
-                                        Just nft
-                                )
-                    )
-    in
-    maybeCheck
-        |> unwrap Cmd.none
-            (\nft ->
-                nft.register
-                    |> accountExists rpc
-                    |> Task.attempt
-                        (AccountCheckCb nft.id)
-            )
-
-
-accountExists : String -> String -> Task Http.Error Bool
-accountExists rpc pubkey =
+getMint : String -> String -> Task Http.Error (Maybe String)
+getMint rpc pubkey =
     Http.task
         { method = "POST"
         , headers = []
@@ -429,7 +435,7 @@ accountExists rpc pubkey =
             , ( "params"
               , [ pubkey
                     |> JE.string
-                , [ ( "encoding", JE.string "base58" )
+                , [ ( "encoding", JE.string "base64" )
                   ]
                     |> JE.object
                 ]
@@ -440,9 +446,91 @@ accountExists rpc pubkey =
                 |> Http.jsonBody
         , resolver =
             jsonResolver
-                (JD.nullable JD.value
-                    |> JD.at [ "result", "value" ]
-                    |> JD.map Maybe.Extra.isJust
+                (decodeAccountData
+                    |> JD.map
+                        (Maybe.andThen
+                            (Base64.decode
+                                >> Result.toMaybe
+                                >> Maybe.andThen
+                                    (List.drop (8 + 4 + 1)
+                                        >> List.take 32
+                                        >> bytesToBase58
+                                    )
+                            )
+                        )
                 )
         , timeout = Nothing
         }
+
+
+decodeAccountData : JD.Decoder (Maybe String)
+decodeAccountData =
+    JD.field "result"
+        (JD.field "value"
+            (JD.nullable (JD.field "data" (JD.list JD.string)))
+        )
+        |> JD.map (Maybe.andThen List.head)
+
+
+bigIntToInt =
+    BigInt.toString
+        >> String.toInt
+        >> Maybe.withDefault 0
+
+
+base58Alphabet : Array Char
+base58Alphabet =
+    String.toList "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+        |> Array.fromList
+
+
+bytesToBase58 : List Int -> Maybe String
+bytesToBase58 bts =
+    let
+        encodeHelper : BigInt -> List Char -> List Char
+        encodeHelper currentBigInt acc =
+            if currentBigInt == BigInt.fromInt 0 then
+                acc
+
+            else
+                BigInt.divmod currentBigInt (BigInt.fromInt 58)
+                    |> Maybe.andThen
+                        (\( quotient, remainder ) ->
+                            Array.get
+                                (bigIntToInt remainder)
+                                base58Alphabet
+                                |> Maybe.map
+                                    (\char ->
+                                        encodeHelper quotient (char :: acc)
+                                    )
+                        )
+                    |> Maybe.withDefault acc
+    in
+    if List.length bts /= 32 then
+        Nothing
+
+    else
+        byteArrayToBigInt bts
+            |> Maybe.map
+                (\value ->
+                    let
+                        enc =
+                            encodeHelper value []
+
+                        leadingOnes =
+                            bts
+                                |> List.Extra.takeWhile (\byte -> byte == 0)
+                                |> List.length
+                                |> (\n -> String.repeat n "1")
+                    in
+                    leadingOnes ++ String.fromList enc
+                )
+
+
+byteArrayToBigInt : List Int -> Maybe BigInt
+byteArrayToBigInt =
+    List.map Hex.toString
+        >> List.map (String.padLeft 2 '0')
+        >> String.concat
+        >> (++) "0x"
+        >> BigInt.fromHexString

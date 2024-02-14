@@ -1,8 +1,7 @@
 module Main exposing (main)
 
 import Browser
-import Dict
-import Ports exposing (..)
+import Ports
 import Time
 import Types exposing (..)
 import Update exposing (update)
@@ -67,9 +66,8 @@ subscriptions model =
         [ Ports.walletCb WalletCb
         , Ports.disconnect (always Disconnect)
         , Ports.loadKeypairCb LoadKeypairCb
-        , Ports.keypairMintCb KeypairMintCb
+        , Ports.findRegisterCb FindRegisterCb
         , Ports.addrCb AddrCb
-        , Ports.idExists IdMintCb
         , Ports.mintCb MintCb
         , Ports.grindCb GrindCb
         , Ports.countCb CountCb

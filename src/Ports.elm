@@ -23,10 +23,7 @@ type alias Key =
 port log : String -> Cmd msg
 
 
-port checkId : Int -> Cmd msg
-
-
-port checkKeypairId : Int -> Cmd msg
+port findRegister : Int -> Cmd msg
 
 
 port startGrind : Value -> Cmd msg
@@ -48,10 +45,7 @@ port fileOut : Value -> Cmd msg
 -- IN
 
 
-port idExists : (Maybe String -> msg) -> Sub msg
-
-
-port keypairMintCb : (Maybe String -> msg) -> Sub msg
+port findRegisterCb : ({ id : Int, register : String } -> msg) -> Sub msg
 
 
 port addrCb : (List String -> msg) -> Sub msg

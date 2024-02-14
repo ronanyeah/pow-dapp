@@ -1,6 +1,5 @@
 module Types exposing (..)
 
-import Dict exposing (Dict)
 import Http
 import Json.Decode exposing (Value)
 import Ports
@@ -67,9 +66,10 @@ type Msg
     | FileCb Value
     | WalletCb String
     | AddrCb (List String)
-    | IdMintCb (Maybe String)
-    | KeypairMintCb (Maybe String)
     | LoadKeypairCb (Maybe Ports.Key)
+    | KeypairMintCheckCb (Result Http.Error (Maybe String))
+    | IdMintCheckCb (Result Http.Error (Maybe String))
+    | FindRegisterCb { id : Int, register : String }
     | Disconnect
     | Reset
     | SubmitId
@@ -82,7 +82,6 @@ type Msg
     | CountCb Int
     | StopGrind
     | GrindCb Ports.Key
-    | AccountCheckCb Int (Result Http.Error Bool)
     | PowGen
     | SelectNft Ports.Key
     | VanityGen

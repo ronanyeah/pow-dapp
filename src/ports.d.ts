@@ -6,15 +6,16 @@ interface ElmApp {
 
 interface Ports {
   log: PortOut<string>;
-  checkId: PortOut<number>;
-  checkKeypairId: PortOut<number>;
+  findRegister: PortOut<number>;
   startGrind: PortOut<any>;
   stopGrind: PortOut<null>;
   openWalletMenu: PortOut<null>;
   mintNft: PortOut<number[]>;
   fileOut: PortOut<any>;
-  idExists: PortIn<string | null>;
-  keypairMintCb: PortIn<string | null>;
+  findRegisterCb: PortIn<{
+    id: number;
+    register: string;
+  }>;
   addrCb: PortIn<string[]>;
   walletCb: PortIn<string>;
   startTimeCb: PortIn<number>;

@@ -13,7 +13,6 @@ import {
   buildMintIx,
   parsePow,
   findRegister,
-  readRegister,
   RPC,
 } from "./web3";
 
@@ -57,19 +56,10 @@ const solConnect = new SolanaConnect();
 
   app.ports.log.subscribe((txt: string) => console.log(txt));
 
-  app.ports.checkId.subscribe((n) =>
+  app.ports.findRegister.subscribe((id) =>
     (async () => {
-      const [_, register] = await readRegister(n);
-      app.ports.idExists.send(register ? register.mint.toString() : null);
-    })().catch((e) => {
-      console.error(e);
-    })
-  );
-
-  app.ports.checkKeypairId.subscribe((n) =>
-    (async () => {
-      const [_, register] = await readRegister(n);
-      app.ports.keypairMintCb.send(register ? register.mint.toString() : null);
+      const register = await findRegister(id);
+      app.ports.findRegisterCb.send({ id, register: register.toString() });
     })().catch((e) => {
       console.error(e);
     })
@@ -122,7 +112,7 @@ const solConnect = new SolanaConnect();
         });
       }
 
-      const [register, data] = await readRegister(nft.id);
+      const register = findRegister(nft.id);
 
       return app.ports.loadKeypairCb.send({
         nft: {
