@@ -263,7 +263,7 @@ viewMintStatus _ =
         , "Q4pDoFu2717KWq9otDP6chkiTdXbb2B7eKAwo"
         ]
     , viewMintRow 4
-        6557
+        6558
         (Just 6561)
         InProgress
         [ "pow"
@@ -303,7 +303,7 @@ viewMintStatus _ =
         , "u7Hoyk6GL3CqwzJpTPxNQPbraXunpkMd"
         ]
     , viewMintRow 9
-        4
+        9
         Nothing
         InProgress
         [ "pow"
@@ -311,10 +311,13 @@ viewMintStatus _ =
         , "RAdU8GRzPjsZDB3sHn2RqFa82yki4ph"
         ]
     , viewMintRow 10
-        0
+        2
         Nothing
         InProgress
-        []
+        [ "pow"
+        , "2148269433"
+        , "MsT7eLDqXqeji8DQNKSrA45uhkioEM"
+        ]
     , para [ Font.italic, Font.size 14 ] "Note: '0' is not a valid character in Solana addresses, so cannot be in a POW ID."
     ]
         |> column
@@ -350,16 +353,12 @@ viewMintRow tier count max status addr =
             |> text
       ]
         |> row [ spacing 10 ]
-    , if List.isEmpty addr then
-        text "???"
-
-      else
-        newTabLink [ hover, Font.size 15 ]
-            { url =
-                "https://solscan.io/token/"
-                    ++ String.concat addr
-            , label = renderPowTrunc addr True
-            }
+    , newTabLink [ hover, Font.size 15 ]
+        { url =
+            "https://solscan.io/token/"
+                ++ String.concat addr
+        , label = renderPowTrunc addr True
+        }
     ]
         |> row [ spacing 10, width fill, spaceEvenly ]
 
