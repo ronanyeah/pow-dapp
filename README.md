@@ -2,6 +2,8 @@
 
 [pow.cafe](https://pow.cafe/)
 
+[Smart contract code](https://github.com/ronanyeah/pow-program)
+
 ## Requirements
 - [npm CLI](https://docs.npmjs.com/)
 
