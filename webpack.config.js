@@ -4,7 +4,7 @@ const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 
 const publicFolder = resolve("./public");
 
-const { RPC_URL } = process.env;
+const { RPC_URL, BACKEND } = process.env;
 
 module.exports = (env) => {
   const devMode = Boolean(env.WEBPACK_SERVE);
@@ -37,6 +37,16 @@ module.exports = (env) => {
     devServer: {
       port: 8000,
       hot: "only",
+      proxy: {
+        "/login": {
+          target: BACKEND,
+          changeOrigin: true,
+        },
+        "/inventory": {
+          target: BACKEND,
+          changeOrigin: true,
+        },
+      },
     },
     module: {
       rules: [

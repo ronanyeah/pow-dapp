@@ -68,6 +68,21 @@
       ::-webkit-scrollbar {
         display: none;
       }
+
+      @keyframes pulse-border {
+        0% {
+          border-color: green;
+          box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7);
+        }
+        50% {
+          border-color: green;
+          box-shadow: 0 0 10px 10px rgba(0, 255, 0, 0);
+        }
+        100% {
+          border-color: green;
+          box-shadow: 0 0 0 0 rgba(0, 255, 0, 0);
+        }
+      }
     </style>
   </head>
   <body>

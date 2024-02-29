@@ -6,8 +6,9 @@ import "@fontsource/bowlby-one-sc";
 import "@fontsource-variable/montserrat";
 import "@fontsource/bangers";
 import "@fontsource/ibm-plex-mono";
-import { ElmApp } from "./ports";
+import { ElmApp, Hit } from "./ports";
 import {
+  signText,
   createPow,
   launch,
   buildMintIx,
@@ -31,6 +32,7 @@ const solConnect = new SolanaConnect();
         height: window.innerHeight,
       },
       rpc: RPC.toString(),
+      now: Date.now(),
     },
   });
 
@@ -55,6 +57,31 @@ const solConnect = new SolanaConnect();
   //solConnect.openMenu();
 
   app.ports.log.subscribe((txt: string) => console.log(txt));
+
+  app.ports.disconnectOut.subscribe(() => {
+    const wallet = solConnect.getWallet();
+    if (wallet) {
+      wallet.disconnect();
+    }
+  });
+
+  app.ports.signIn.subscribe(() =>
+    (async () => {
+      const wallet = solConnect.getWallet();
+      if (wallet && "signMessage" in wallet) {
+        const msg = "Time to POW: " + Date.now();
+        const bts = await signText(msg, wallet);
+        const hexSig = bts.reduce(
+          (str, byte) => str + byte.toString(16).padStart(2, "0"),
+          ""
+        );
+        app.ports.signInCb.send([msg, hexSig]);
+      }
+    })().catch((e) => {
+      console.error(e);
+      app.ports.walletErr.send(null);
+    })
+  );
 
   app.ports.findRegister.subscribe((id) =>
     (async () => {
@@ -90,7 +117,7 @@ const solConnect = new SolanaConnect();
       app.ports.mintCb.send(sig);
     })().catch((e) => {
       console.error(e);
-      app.ports.mintErr.send(null);
+      app.ports.walletErr.send(null);
     })
   );
 

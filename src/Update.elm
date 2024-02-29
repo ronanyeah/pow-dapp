@@ -7,6 +7,7 @@ import Helpers.Http exposing (jsonResolver, parseError)
 import Hex
 import Http
 import Json.Decode as JD
+import Json.Decode.Pipeline as JDP
 import Json.Encode as JE
 import List.Extra
 import Maybe.Extra exposing (unwrap)
@@ -50,6 +51,41 @@ update msg model =
                 | viewGen = Just n
                 , grindMessage = Nothing
                 , view = ViewGenerator
+              }
+            , Cmd.none
+            )
+
+        WsConnect ->
+            ( { model | wsStatus = Connecting }
+              --, Ports.wsConnect ()
+            , Cmd.none
+            )
+
+        SignMessage ->
+            ( { model | walletInUse = True }
+            , Ports.signIn ()
+            )
+
+        WsDisconnected ->
+            ( { model | wsStatus = Standby }
+            , Cmd.none
+            )
+
+        WsConnectCb val ->
+            ( { model
+                | wsStatus =
+                    if val then
+                        Live
+
+                    else
+                        Standby
+              }
+            , Cmd.none
+            )
+
+        HitCb hit ->
+            ( { model
+                | hits = hit :: model.hits
               }
             , Cmd.none
             )
@@ -261,7 +297,7 @@ update msg model =
             , Cmd.none
             )
 
-        MintErr ->
+        WalletErr ->
             ( { model
                 | walletInUse = False
               }
@@ -334,8 +370,85 @@ update msg model =
                 |> Cmd.batch
             )
 
+        InventoryCb res ->
+            res
+                |> unpack
+                    (\err ->
+                        ( { model
+                            | walletInUse = False
+                          }
+                        , Ports.log (parseError err)
+                        )
+                    )
+                    (\supply ->
+                        ( { model
+                            | inventory = Just supply
+                            , walletInUse = False
+                          }
+                        , Cmd.none
+                        )
+                    )
+
+        FetchInventory ->
+            model.wallet
+                |> Maybe.andThen .token
+                |> unwrap ( model, Cmd.none )
+                    (\token ->
+                        ( { model
+                            | walletInUse = True
+                          }
+                        , getInventory token
+                            |> Task.attempt InventoryCb
+                        )
+                    )
+
+        LoginCb res ->
+            res
+                |> unpack
+                    (\err ->
+                        ( { model
+                            | walletInUse = False
+                          }
+                        , Ports.log (parseError err)
+                        )
+                    )
+                    (\token ->
+                        ( { model
+                            | wallet =
+                                model.wallet
+                                    |> Maybe.map
+                                        (\wl ->
+                                            { wl
+                                                | token = Just token
+                                            }
+                                        )
+                          }
+                        , getInventory token
+                            |> Task.attempt InventoryCb
+                        )
+                    )
+
+        SignInCb ( message, sig ) ->
+            model.wallet
+                |> unwrap
+                    ( { model | walletInUse = False }
+                    , Cmd.none
+                    )
+                    (\wl ->
+                        ( { model | walletInUse = model.walletInUse }
+                        , login wl.address message sig
+                            |> Task.attempt LoginCb
+                        )
+                    )
+
         WalletCb val ->
-            ( { model | wallet = Just val }
+            ( { model
+                | wallet =
+                    Just
+                        { address = val
+                        , token = Nothing
+                        }
+              }
             , Cmd.none
             )
 
@@ -417,9 +530,55 @@ update msg model =
                     )
 
         Disconnect ->
-            ( model
-            , Cmd.none
+            ( { model | wallet = Nothing, inventory = Nothing }
+            , Ports.disconnectOut ()
             )
+
+
+login : String -> String -> String -> Task Http.Error String
+login address message hash =
+    Http.task
+        { method = "POST"
+        , headers = []
+        , url = "/login"
+        , body =
+            [ ( "address", JE.string address )
+            , ( "signature", JE.string hash )
+            , ( "message", JE.string message )
+            ]
+                |> JE.object
+                |> Http.jsonBody
+        , resolver = jsonResolver JD.string
+        , timeout = Nothing
+        }
+
+
+getInventory : String -> Task Http.Error Inventory
+getInventory token =
+    Http.task
+        { method = "GET"
+        , headers =
+            [ Http.header "X-POW-AUTH" token
+            ]
+        , url = "/inventory"
+        , body = Http.emptyBody
+        , resolver =
+            JD.succeed Inventory
+                |> JDP.required "t1" JD.int
+                |> JDP.required "t2" JD.int
+                |> JDP.required "t3" JD.int
+                |> JDP.required "t4" JD.int
+                |> JDP.required "t5" JD.int
+                |> JDP.required "t6" JD.int
+                |> JDP.required "t7" JD.int
+                |> JDP.required "t8" JD.int
+                |> JDP.required "t9" JD.int
+                |> JDP.required "t10" JD.int
+                |> JDP.required "z" JD.int
+                |> JDP.required "total" JD.int
+                |> jsonResolver
+        , timeout = Nothing
+        }
 
 
 getMint : String -> String -> Task Http.Error (Maybe String)

@@ -5,7 +5,8 @@
     "benchmark": "node tests/benchmark.js",
     "worker:build": "webpack --config webpack.worker.js",
     "worker:watch": "webpack serve --config webpack.worker.js",
-    "codegen": "anchor-client-gen ./idl/pow.json ./src/codegen"
+    "codegen": "anchor-client-gen ./idl/pow.json ./src/codegen",
+    "netlify-setup": "sed -i s@FORWARD_URL@$BACKEND@g netlify.toml"
   },
   "dependencies": {
     "@coral-xyz/borsh": "^0.29.0",

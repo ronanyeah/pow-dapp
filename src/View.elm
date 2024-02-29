@@ -1,5 +1,6 @@
 module View exposing (view)
 
+import BigInt
 import Colors exposing (..)
 import Element exposing (..)
 import Element.Background as Background
@@ -81,7 +82,7 @@ viewWide model =
     let
         logo =
             image
-                [ height <| px (fork model.isMobile 170 250)
+                [ height <| px (fork model.isShort 170 250)
                 , style "animation" "pulse 2s infinite"
                 ]
                 { src = "/pow.png"
@@ -153,8 +154,14 @@ viewWide model =
                     , Font.size (fork model.isMobile 19 24)
                     , width fill
                     ]
-          , viewX
-                |> el [ centerX ]
+          , [ viewX
+            , image [ height <| px 26 ]
+                { src = "/github.png"
+                , description = ""
+                }
+                |> linkOut "https://github.com/ronanyeah/pow-dapp" [ padding 3 ]
+            ]
+                |> row [ spacing 10, centerX ]
           ]
             |> column
                 [ cappedWidth (fork model.isMobile 160 250)
@@ -204,6 +211,9 @@ viewWide model =
 
             ViewAvails ->
                 viewAvails model
+
+            ViewHits ->
+                viewHolder model
         )
             |> el
                 [ Background.color white
@@ -224,8 +234,7 @@ viewWide model =
             ]
     ]
         |> row
-            [ width <| px 1150
-            , spaceEvenly
+            [ width <| px 1250
             , centerX
             , height fill
             , cappedHeight 820
@@ -234,8 +243,226 @@ viewWide model =
             ]
 
 
+viewHolder : Model -> Element Msg
+viewHolder model =
+    [ [ [ text ("Holder Access Area  " ++ bang)
+            |> el [ Font.bold, Font.size 22 ]
+        ]
+            |> row [ width fill, spaceEvenly ]
+      , case model.wsStatus of
+            Standby ->
+                text "Connect"
+                    |> btn (Just WsConnect) []
+                    |> when False
+
+            Connecting ->
+                spinner 40
+
+            Live ->
+                [ el
+                    [ Background.color (rgb255 0 255 0)
+                    , height <| px 20
+                    , width <| px 20
+                    , Border.rounded 10
+                    , style "animation" "pulse-border 1.5s infinite"
+                    ]
+                    none
+                , text "LIVE"
+                    |> el [ Font.bold ]
+                ]
+                    |> row [ spacing 10 ]
+                    |> when (model.wsStatus == Live)
+      ]
+        |> row [ width fill, spaceEvenly ]
+    , model.wallet
+        |> unwrap
+            ([ para
+                [ Font.center
+                , width <| px 300
+                ]
+                "Connect a wallet to view inventory and access utility features."
+             , selectWallet
+                |> el
+                    [ centerX
+                    ]
+             ]
+                |> column [ centerX, spacing 40, paddingXY 0 40 ]
+            )
+            (\wallet ->
+                [ [ [ text "Wallet Connected"
+                        |> el [ Font.bold ]
+                    , text "Disconnect"
+                        |> btn (Just Disconnect)
+                            [ Font.underline
+                            , Font.size 12
+                            , alignRight
+                            ]
+                    ]
+                        |> row [ spacing 30 ]
+                  , text
+                        (String.left 11 wallet.address
+                            ++ "..."
+                            ++ String.right 11 wallet.address
+                        )
+                        |> el [ Font.size 17 ]
+                  ]
+                    |> column
+                        [ spacing 10
+                        , padding 10
+                        , Border.rounded 10
+                        , Border.width 1
+                        , centerX
+                        ]
+                , if wallet.token == Nothing then
+                    [ [ text "Sign in to proceed"
+                            |> btn (Just SignMessage)
+                                [ padding 10
+                                , Border.width 1
+                                ]
+                      , spinner 20
+                            |> when model.walletInUse
+                      ]
+                        |> row [ spacing 10, centerX ]
+                    ]
+                        |> column [ spacing 20, centerX ]
+
+                  else
+                    model.inventory
+                        |> unwrap
+                            (if model.walletInUse then
+                                [ text "Inventory loading"
+                                , spinner 30
+                                    |> el [ centerX ]
+                                ]
+                                    |> column [ spacing 20, centerX ]
+
+                             else
+                                [ text "Inventory failed to load"
+                                , text "Refresh"
+                                    |> btn (Just FetchInventory)
+                                        [ Border.width 1
+                                        , padding 10
+                                        , centerX
+                                        ]
+                                ]
+                                    |> column [ spacing 20, centerX ]
+                            )
+                            (\inventory ->
+                                let
+                                    badge t n =
+                                        [ text ("Tier " ++ t ++ ":")
+                                            |> el [ Font.bold ]
+                                        , text (String.fromInt n)
+                                        ]
+                                            |> row [ width <| px 70, spaceEvenly ]
+                                in
+                                [ [ [ text (bang ++ " POW total:")
+                                        |> el [ Font.bold, Font.size 22 ]
+                                    , text (String.fromInt inventory.total)
+                                        |> el [ Font.size 22 ]
+                                    ]
+                                        |> row [ spacing 10, centerX ]
+                                  , [ text "Utility access:"
+                                        |> el [ Font.size 17 ]
+                                    , text
+                                        (if inventory.total > 0 then
+                                            "✅"
+
+                                         else
+                                            "❌"
+                                        )
+                                    ]
+                                        |> row [ spacing 10, centerX ]
+                                  ]
+                                    |> column [ spacing 20, centerX ]
+                                , [ [ badge "1" inventory.t1
+                                    , badge "2" inventory.t2
+                                    , badge "3" inventory.t3
+                                    , badge "4" inventory.t4
+                                    ]
+                                        |> column [ spacing 10, Font.size 15, alignTop ]
+                                  , [ badge "5" inventory.t5
+                                    , badge "6" inventory.t6
+                                    , badge "7" inventory.t7
+                                    , badge "8" inventory.t8
+                                    ]
+                                        |> column [ spacing 10, Font.size 15, alignTop ]
+                                  , [ badge "9" inventory.t9
+                                    , badge "10" inventory.t10
+                                    , badge "Z" inventory.z
+                                        |> el [ alignBottom ]
+                                    ]
+                                        |> column [ spacing 10, Font.size 15, height fill ]
+                                  ]
+                                    |> row
+                                        [ spacing 20
+                                        , Font.size 15
+                                        , Border.width 1
+                                        , padding 10
+                                        ]
+                                ]
+                                    |> column [ centerX, spacing 30 ]
+                            )
+                ]
+                    |> column [ spacing 30, width fill ]
+            )
+    ]
+        |> column [ spacing 20, width fill, height fill ]
+
+
+secondsDiff : Int -> Int -> Int
+secondsDiff now age =
+    (now // 1000) - age
+
+
+formatTime : Int -> Int -> String
+formatTime now age =
+    let
+        secs =
+            secondsDiff now age
+    in
+    if secs > 7200 then
+        String.fromInt (round (toFloat secs / 3600)) ++ " hours"
+
+    else if secs > 120 then
+        String.fromInt (round (toFloat secs / 60)) ++ " minutes"
+
+    else
+        String.fromInt secs ++ " seconds"
+
+
+viewBubble k v =
+    newTabLink [ hover ]
+        { url =
+            "https://solscan.io/account/"
+                ++ v
+        , label =
+            [ text k
+                |> el [ Font.bold ]
+            , text (String.left 9 v ++ "...")
+            ]
+                |> row
+                    [ spacing 10
+                    , Font.size 13
+
+                    --, Background.color lightBlue
+                    , padding 5
+                    , Border.rounded 10
+                    , Border.width 1
+                    ]
+        }
+
+
+viewTag k v =
+    [ text (k ++ ":")
+        |> el [ Font.bold ]
+    , text v
+    ]
+        |> row [ spacing 10 ]
+
+
 viewMintStatus : Model -> Element Msg
-viewMintStatus _ =
+viewMintStatus model =
     [ text ("Mint Status " ++ bang)
         |> el [ titleFont, Font.size 17 ]
     , viewMintRow 1
@@ -303,7 +530,7 @@ viewMintStatus _ =
         , "u7Hoyk6GL3CqwzJpTPxNQPbraXunpkMd"
         ]
     , viewMintRow 9
-        9
+        17
         Nothing
         InProgress
         [ "pow"
@@ -325,7 +552,7 @@ viewMintStatus _ =
             , padding 10
             , Background.color white
             , width fill
-            , Font.size 15
+            , Font.size (fork model.isShort 12 15)
             , Border.width 1
             ]
 
@@ -353,7 +580,7 @@ viewMintRow tier count max status addr =
             |> text
       ]
         |> row [ spacing 10 ]
-    , newTabLink [ hover, Font.size 15 ]
+    , newTabLink [ hover ]
         { url =
             "https://solscan.io/token/"
                 ++ String.concat addr
@@ -479,6 +706,9 @@ viewThin model =
 
             ViewAvails ->
                 text "avails"
+
+            ViewHits ->
+                none
       ]
         |> column [ width fill, height fill ]
 
@@ -933,6 +1163,9 @@ viewPanel model =
 
         ViewAvails ->
             viewAvails model
+
+        ViewHits ->
+            none
       )
         |> el
             [ Background.color white
@@ -1096,8 +1329,8 @@ viewKeypair model key =
                                             , model.wallet
                                                 |> unwrap
                                                     ([ text "Connect a Solana wallet to continue"
-                                                     , text "Select wallet"
-                                                        |> btn (Just SelectWallet) [ padding 10, Border.width 1 ]
+                                                     , selectWallet
+                                                        |> el [ centerX ]
                                                      ]
                                                         |> column [ spacing 20 ]
                                                     )
@@ -1282,6 +1515,7 @@ viewBanner model =
             , blockFont
             , spacing 8
             ]
+        |> when (not model.isShort)
     , model.demoAddress
         |> List.indexedMap
             (\n txt_ ->
@@ -1488,20 +1722,28 @@ nftLinkWTensor mint =
         |> row [ spacing 15 ]
 
 
+tensorLink =
+    newTabLink [ hover, Font.underline ]
+        { url = "https://www.tensor.trade/trade/pow"
+        , label = text "Trade on Tensor  📊"
+        }
+
+
 viewX =
     newTabLink
         [ Background.color white
         , shadow
         , blockFont
         , hover
-        , paddingXY 20 10
+        , paddingXY 15 10
+        , Font.size 17
         ]
         { url = "https://x.com/pow_mint"
         , label =
-            [ Img.x 20
+            [ Img.x 17
             , text "@pow_mint"
             ]
-                |> row [ spacing 15 ]
+                |> row [ spacing 10 ]
         }
 
 
@@ -1521,14 +1763,10 @@ viewNav model =
     [ navBtn model.view "🏠" ViewHome
     , navBtn model.view "Search 🔍" ViewAvails
     , navBtn model.view "Grind 🎰" ViewGenerator
+    , navBtn model.view ("Mint " ++ bang) ViewMint
+    , navBtn model.view "Holders 💎" ViewHits
 
     --, navBtn model.view "Keygen 🎰" ViewGenerator
-    , navBtn model.view ("Mint " ++ bang) ViewMint
-    , image [ height <| px 26 ]
-        { src = "/github.png"
-        , description = ""
-        }
-        |> linkOut "https://github.com/ronanyeah/pow-dapp" [ alignRight, padding 3 ]
     ]
         |> row
             [ spacing 10
@@ -1585,6 +1823,92 @@ formatFloat =
         { usLocale
             | decimals = FormatNumber.Locales.Exact 2
         }
+
+
+formatBillion : BigInt.BigInt -> String
+formatBillion amount =
+    let
+        bil =
+            BigInt.fromInt 1000000000
+    in
+    if BigInt.lt amount bil then
+        "<1bn"
+
+    else
+        (BigInt.div amount bil
+            |> BigInt.toString
+            |> String.toInt
+            |> Maybe.withDefault 999
+            |> toFloat
+            |> FormatNumber.format
+                { usLocale
+                    | decimals = FormatNumber.Locales.Exact 0
+                }
+        )
+            ++ "bn"
+
+
+formatMils : Int -> String
+formatMils amount_ =
+    let
+        amount =
+            toFloat amount_
+
+        mil =
+            1000000.0
+
+        bil =
+            1000000000.0
+    in
+    if amount == 0 then
+        "0m"
+
+    else if amount < 100000 then
+        ">0.1m"
+
+    else if amount < mil then
+        formatFloat (amount / 1000) ++ "k"
+
+    else if amount < bil then
+        formatFloat (amount / mil) ++ "m"
+
+    else
+        (amount
+            / bil
+            |> formatFloat
+        )
+            ++ "bn"
+
+
+selectWallet =
+    [ Img.solana 20, text "Select Wallet" ]
+        |> row
+            [ spacing 15
+            , Font.size 20
+            , paddingXY 25 15
+            , Font.family [ Font.monospace ]
+            , Font.bold
+            , style "animation" "all 1s"
+            ]
+        |> btn (Just SelectWallet)
+            [ Background.gradient
+                { angle = degrees 170
+                , steps =
+                    [ black, black, rgb255 128 0 128 ]
+                }
+            , Font.color white
+            , mouseOver
+                [ Background.gradient
+                    { angle = degrees 350
+                    , steps =
+                        [ black, black, rgb255 128 0 128 ]
+                    }
+                , Border.color black
+                ]
+            , Border.rounded 10
+            , Border.width 2
+            , Border.color red
+            ]
 
 
 formatKeycount n =

@@ -1,0 +1,9 @@
+[[redirects]]
+from = "/login"
+to = "FORWARD_URL/login"
+status = 200
+
+[[redirects]]
+from = "/inventory"
+to = "FORWARD_URL/inventory"
+status = 200

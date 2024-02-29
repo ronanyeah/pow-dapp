@@ -11,7 +11,7 @@ type alias Key =
 
 
 type alias Model =
-    { wallet : Maybe String
+    { wallet : Maybe Wallet
     , demoAddress : List String
     , loadedKeypair : Maybe Ports.Key
     , err : Maybe String
@@ -34,6 +34,7 @@ type alias Model =
     , mintSig : Maybe String
     , walletInUse : Bool
     , isMobile : Bool
+    , isShort : Bool
     , count : Int
     , grinding : Bool
     , rpc : String
@@ -44,12 +45,16 @@ type alias Model =
     , screen : Screen
     , startTime : Int
     , now : Int
+    , hits : List Ports.Hit
+    , wsStatus : WsStatus
+    , inventory : Maybe Inventory
     }
 
 
 type alias Flags =
     { screen : Screen
     , rpc : String
+    , now : Int
     }
 
 
@@ -58,15 +63,19 @@ type View
     | ViewMint
     | ViewAvails
     | ViewGenerator
+    | ViewHits
 
 
 type Msg
     = SelectWallet
     | MintNft (List Int)
+    | SignMessage
     | FileCb Value
     | WalletCb String
     | AddrCb (List String)
     | LoadKeypairCb (Maybe Ports.Key)
+    | LoginCb (Result Http.Error String)
+    | InventoryCb (Result Http.Error Inventory)
     | KeypairMintCheckCb (Result Http.Error (Maybe String))
     | IdMintCheckCb (Result Http.Error (Maybe String))
     | FindRegisterCb { id : Int, register : String }
@@ -74,7 +83,7 @@ type Msg
     | Reset
     | SubmitId
     | MintCb String
-    | MintErr
+    | WalletErr
     | IdInputChange String
     | EndChange String
     | StartChange String
@@ -89,6 +98,12 @@ type Msg
     | GenSelect Match
     | StartTimeCb Int
     | Tick Time.Posix
+    | HitCb Ports.Hit
+    | WsConnect
+    | WsDisconnected
+    | WsConnectCb Bool
+    | SignInCb ( String, String )
+    | FetchInventory
 
 
 type alias Screen =
@@ -107,3 +122,31 @@ type MintStatus
     = MintedOut
     | InProgress
     | Closed
+
+
+type WsStatus
+    = Standby
+    | Connecting
+    | Live
+
+
+type alias Wallet =
+    { address : String
+    , token : Maybe String
+    }
+
+
+type alias Inventory =
+    { t1 : Int
+    , t2 : Int
+    , t3 : Int
+    , t4 : Int
+    , t5 : Int
+    , t6 : Int
+    , t7 : Int
+    , t8 : Int
+    , t9 : Int
+    , t10 : Int
+    , z : Int
+    , total : Int
+    }

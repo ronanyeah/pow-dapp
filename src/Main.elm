@@ -25,8 +25,10 @@ init flags =
       , err = Nothing
       , loadedKeypair = Nothing
       , isMobile = flags.screen.width < 1024 --|| flags.screen.height < 632
+      , isShort = flags.screen.height < 800
       , screen = flags.screen
       , demoAddress = []
+      , inventory = Nothing
       , keys = []
       , keypairCheck =
             { inProg = False
@@ -52,9 +54,9 @@ init flags =
       , searchMessage = Nothing
       , match = MatchStart
       , startTime = 0
-
-      --, now = Time.millisToPosix 0
-      , now = 0
+      , now = flags.now
+      , hits = []
+      , wsStatus = Standby
       }
     , Cmd.none
     )
@@ -71,11 +73,11 @@ subscriptions model =
         , Ports.mintCb MintCb
         , Ports.grindCb GrindCb
         , Ports.countCb CountCb
+        , Ports.hitCb HitCb
+        , Ports.signInCb SignInCb
         , Ports.startTimeCb StartTimeCb
-        , Ports.mintErr (always MintErr)
-        , if model.grinding then
-            Time.every 100 Tick
-
-          else
-            Sub.none
+        , Ports.wsConnectCb WsConnectCb
+        , Ports.wsDisconnected (always WsDisconnected)
+        , Ports.walletErr (always WalletErr)
+        , Time.every 1000 Tick
         ]

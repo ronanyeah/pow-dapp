@@ -1,6 +1,9 @@
 /* eslint-disable fp/no-loops, fp/no-mutation, fp/no-let */
 
-import { Adapter } from "@solana/wallet-adapter-base";
+import {
+  Adapter,
+  MessageSignerWalletAdapter,
+} from "@solana/wallet-adapter-base";
 import {
   PublicKey,
   SYSVAR_INSTRUCTIONS_PUBKEY,
@@ -305,6 +308,14 @@ function createPow(): [string, string, string] {
   return [PREFIX, id, suffix];
 }
 
+function signText(
+  message: string,
+  wallet: MessageSignerWalletAdapter
+): Promise<Uint8Array> {
+  const encodedMessage = new TextEncoder().encode(message);
+  return wallet.signMessage(encodedMessage);
+}
+
 export {
   launch,
   simulate,
@@ -319,4 +330,5 @@ export {
   RPC,
   fetchTier,
   createPow,
+  signText,
 };

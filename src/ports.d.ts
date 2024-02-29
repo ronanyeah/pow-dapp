@@ -6,6 +6,8 @@ interface ElmApp {
 
 interface Ports {
   log: PortOut<string>;
+  disconnectOut: PortOut<null>;
+  signIn: PortOut<null>;
   findRegister: PortOut<number>;
   startGrind: PortOut<any>;
   stopGrind: PortOut<null>;
@@ -17,14 +19,18 @@ interface Ports {
     register: string;
   }>;
   addrCb: PortIn<string[]>;
+  signInCb: PortIn<[string, string]>;
   walletCb: PortIn<string>;
   startTimeCb: PortIn<number>;
   mintCb: PortIn<string>;
   grindCb: PortIn<Key>;
   countCb: PortIn<number>;
-  mintErr: PortIn<null>;
+  walletErr: PortIn<null>;
   loadKeypairCb: PortIn<Key | null>;
   disconnect: PortIn<null>;
+  hitCb: PortIn<Hit>;
+  wsConnectCb: PortIn<boolean>;
+  wsDisconnected: PortIn<null>;
 }
 
 interface PortOut<T> {
@@ -46,4 +52,22 @@ interface Key {
   } | null;
 }
 
-export { ElmApp, Key };
+interface Hit {
+  name: string;
+  reserve: number;
+  mint: string;
+  lpMint: string;
+  liquidityLocked: boolean;
+  top50: number;
+  top20: number;
+  top10: number;
+  pool: string;
+  price: number;
+  openTime: number;
+  symbol: string;
+  mintSupply: string;
+  mintLocked: boolean;
+  holders: number;
+}
+
+export { ElmApp, Key, Hit };
