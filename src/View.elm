@@ -353,8 +353,9 @@ viewHolder model =
                                         [ text ("Tier " ++ t ++ ":")
                                             |> el [ Font.bold ]
                                         , text (String.fromInt n)
+                                            |> el [ alignRight ]
                                         ]
-                                            |> row [ width <| px 70, spaceEvenly ]
+                                            |> row [ spacing 7, width fill ]
                                 in
                                 [ [ [ text (bang ++ " POW total:")
                                         |> el [ Font.bold, Font.size 22 ]
@@ -380,25 +381,31 @@ viewHolder model =
                                     , badge "3" inventory.t3
                                     , badge "4" inventory.t4
                                     ]
-                                        |> column [ spacing 10, Font.size 15, alignTop ]
+                                        |> column [ spacing 10 ]
                                   , [ badge "5" inventory.t5
                                     , badge "6" inventory.t6
                                     , badge "7" inventory.t7
                                     , badge "8" inventory.t8
                                     ]
-                                        |> column [ spacing 10, Font.size 15, alignTop ]
+                                        |> column [ spacing 10 ]
                                   , [ badge "9" inventory.t9
                                     , badge "10" inventory.t10
                                     , badge "Z" inventory.z
-                                        |> el [ alignBottom ]
+                                        |> el [ alignBottom, width fill ]
                                     ]
-                                        |> column [ spacing 10, Font.size 15, height fill ]
+                                        |> column [ spacing 10, height fill ]
                                   ]
                                     |> row
                                         [ spacing 20
                                         , Font.size 15
                                         , Border.width 1
                                         , padding 10
+                                        ]
+                                , text "Refresh"
+                                    |> btn (Just FetchInventory)
+                                        [ Font.size 15
+                                        , Font.underline
+                                        , centerX
                                         ]
                                 ]
                                     |> column [ centerX, spacing 30 ]

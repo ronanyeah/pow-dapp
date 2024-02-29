@@ -396,6 +396,7 @@ update msg model =
                     (\token ->
                         ( { model
                             | walletInUse = True
+                            , inventory = Nothing
                           }
                         , getInventory token
                             |> Task.attempt InventoryCb
