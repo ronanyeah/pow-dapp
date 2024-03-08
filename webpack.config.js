@@ -37,16 +37,12 @@ module.exports = (env) => {
     devServer: {
       port: 8000,
       hot: "only",
-      proxy: {
-        "/login": {
+      proxy: [
+        {
+          context: ["/api"],
           target: BACKEND,
-          changeOrigin: true,
         },
-        "/inventory": {
-          target: BACKEND,
-          changeOrigin: true,
-        },
-      },
+      ],
     },
     module: {
       rules: [

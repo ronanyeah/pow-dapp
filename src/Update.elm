@@ -541,7 +541,7 @@ login address message hash =
     Http.task
         { method = "POST"
         , headers = []
-        , url = "/login"
+        , url = "/api/login"
         , body =
             [ ( "address", JE.string address )
             , ( "signature", JE.string hash )
@@ -561,7 +561,7 @@ getInventory token =
         , headers =
             [ Http.header "X-POW-AUTH" token
             ]
-        , url = "/inventory"
+        , url = "/api/inventory"
         , body = Http.emptyBody
         , resolver =
             JD.succeed Inventory

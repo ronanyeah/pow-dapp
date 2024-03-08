@@ -1,9 +1,4 @@
 [[redirects]]
-from = "/login"
-to = "FORWARD_URL/login"
-status = 200
-
-[[redirects]]
-from = "/inventory"
-to = "FORWARD_URL/inventory"
+from = "/api/*"
+to = "FORWARD_URL/api/:splat"
 status = 200
