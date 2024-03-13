@@ -6,6 +6,8 @@ interface ElmApp {
 
 interface Ports {
   log: PortOut<string>;
+  wsDisconnect: PortOut<null>;
+  wsConnect: PortOut<string>;
   disconnectOut: PortOut<null>;
   signIn: PortOut<null>;
   findRegister: PortOut<number>;
@@ -14,6 +16,7 @@ interface Ports {
   openWalletMenu: PortOut<null>;
   mintNft: PortOut<number[]>;
   fileOut: PortOut<any>;
+  copy: PortOut<string>;
   findRegisterCb: PortIn<{
     id: number;
     register: string;
@@ -28,7 +31,7 @@ interface Ports {
   walletErr: PortIn<null>;
   loadKeypairCb: PortIn<Key | null>;
   disconnect: PortIn<null>;
-  hitCb: PortIn<Hit>;
+  hitCb: PortIn<any>;
   wsConnectCb: PortIn<boolean>;
   wsDisconnected: PortIn<null>;
 }
@@ -52,22 +55,4 @@ interface Key {
   } | null;
 }
 
-interface Hit {
-  name: string;
-  reserve: number;
-  mint: string;
-  lpMint: string;
-  liquidityLocked: boolean;
-  top50: number;
-  top20: number;
-  top10: number;
-  pool: string;
-  price: number;
-  openTime: number;
-  symbol: string;
-  mintSupply: string;
-  mintLocked: boolean;
-  holders: number;
-}
-
-export { ElmApp, Key, Hit };
+export { ElmApp, Key };

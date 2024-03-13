@@ -16,30 +16,17 @@ type alias Key =
     }
 
 
-type alias Hit =
-    { name : String
-    , reserve : Float
-    , mint : String
-    , lpMint : String
-    , liquidityLocked : Bool
-    , top50 : Float
-    , top20 : Float
-    , top10 : Float
-    , pool : String
-    , price : Int
-    , openTime : Int
-    , symbol : String
-    , mintSupply : String
-    , mintLocked : Bool
-    , holders : Int
-    }
-
-
 
 -- OUT
 
 
 port log : String -> Cmd msg
+
+
+port wsDisconnect : () -> Cmd msg
+
+
+port wsConnect : String -> Cmd msg
 
 
 port disconnectOut : () -> Cmd msg
@@ -64,6 +51,9 @@ port mintNft : List Int -> Cmd msg
 
 
 port fileOut : Value -> Cmd msg
+
+
+port copy : String -> Cmd msg
 
 
 
@@ -103,7 +93,7 @@ port loadKeypairCb : (Maybe Key -> msg) -> Sub msg
 port disconnect : (() -> msg) -> Sub msg
 
 
-port hitCb : (Hit -> msg) -> Sub msg
+port hitCb : (Value -> msg) -> Sub msg
 
 
 port wsConnectCb : (Bool -> msg) -> Sub msg

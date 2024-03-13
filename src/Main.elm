@@ -1,6 +1,9 @@
 module Main exposing (main)
 
 import Browser
+import Dict
+import Json.Decode as JD
+import Misc exposing (decodeHit)
 import Ports
 import Time
 import Types exposing (..)
@@ -55,15 +58,16 @@ init flags =
       , match = MatchStart
       , startTime = 0
       , now = flags.now
-      , hits = []
+      , hits = Dict.empty
       , wsStatus = Standby
+      , viewUtility = ViewInventory
       }
     , Cmd.none
     )
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.batch
         [ Ports.walletCb WalletCb
         , Ports.disconnect (always Disconnect)
@@ -73,7 +77,7 @@ subscriptions model =
         , Ports.mintCb MintCb
         , Ports.grindCb GrindCb
         , Ports.countCb CountCb
-        , Ports.hitCb HitCb
+        , Ports.hitCb (JD.decodeValue decodeHit >> HitCb)
         , Ports.signInCb SignInCb
         , Ports.startTimeCb StartTimeCb
         , Ports.wsConnectCb WsConnectCb

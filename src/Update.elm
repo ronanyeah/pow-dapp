@@ -3,6 +3,7 @@ module Update exposing (update)
 import Array exposing (Array)
 import Base64
 import BigInt exposing (BigInt)
+import Dict
 import Helpers.Http exposing (jsonResolver, parseError)
 import Hex
 import Http
@@ -55,11 +56,59 @@ update msg model =
             , Cmd.none
             )
 
+        RefreshPool poolId ->
+            model.wallet
+                |> Maybe.andThen .token
+                |> unwrap ( model, Cmd.none )
+                    (\token ->
+                        ( { model
+                            | wsStatus = model.wsStatus
+                          }
+                        , Http.task
+                            { method = "GET"
+                            , headers =
+                                [ Http.header "X-POW-AUTH" token
+                                ]
+                            , url = "/api/fresh/" ++ poolId
+                            , body = Http.emptyBody
+                            , resolver = jsonResolver decodeHit
+                            , timeout = Nothing
+                            }
+                            |> Task.attempt RefreshCb
+                        )
+                    )
+
+        RefreshCb res ->
+            res
+                |> unpack
+                    (\err ->
+                        ( { model
+                            | walletInUse = model.walletInUse
+                          }
+                        , Ports.log (parseError err)
+                        )
+                    )
+                    (\hit ->
+                        ( { model
+                            | hits =
+                                model.hits
+                                    |> Dict.insert hit.mint hit
+                          }
+                        , Cmd.none
+                        )
+                    )
+
         WsConnect ->
-            ( { model | wsStatus = Connecting }
-              --, Ports.wsConnect ()
-            , Cmd.none
-            )
+            model.wallet
+                |> Maybe.andThen .token
+                |> unwrap ( model, Cmd.none )
+                    (\token ->
+                        ( { model
+                            | wsStatus = Connecting
+                          }
+                        , Ports.wsConnect token
+                        )
+                    )
 
         SignMessage ->
             ( { model | walletInUse = True }
@@ -83,11 +132,48 @@ update msg model =
             , Cmd.none
             )
 
-        HitCb hit ->
+        HitCb res ->
+            res
+                |> unpack
+                    (\err ->
+                        ( { model
+                            | walletInUse = False
+                          }
+                        , Ports.log (JD.errorToString err)
+                        )
+                    )
+                    (\hit ->
+                        ( { model
+                            | hits =
+                                model.hits
+                                    |> Dict.insert hit.mint hit
+                                    |> Dict.toList
+                                    |> List.sortBy (\( _, v ) -> v.openTime)
+                                    |> List.reverse
+                                    |> List.take 30
+                                    |> Dict.fromList
+                          }
+                        , Cmd.none
+                        )
+                    )
+
+        ClearResults ->
             ( { model
-                | hits = hit :: model.hits
+                | hits = Dict.empty
               }
             , Cmd.none
+            )
+
+        ToggleUtility ->
+            ( { model
+                | viewUtility =
+                    if model.viewUtility == ViewUtility then
+                        ViewInventory
+
+                    else
+                        ViewUtility
+              }
+            , Ports.wsDisconnect ()
             )
 
         GenSelect key ->
@@ -274,11 +360,11 @@ update msg model =
             , Cmd.none
             )
 
-        SetView str ->
+        SetView v ->
             ( { model
-                | view = str
+                | view = v
               }
-            , Cmd.none
+            , Ports.wsDisconnect ()
             )
 
         GrindCb key ->
@@ -530,9 +616,23 @@ update msg model =
                         )
                     )
 
+        WsDisconnect ->
+            ( model
+            , Ports.wsDisconnect ()
+            )
+
         Disconnect ->
-            ( { model | wallet = Nothing, inventory = Nothing }
+            ( { model
+                | wallet = Nothing
+                , inventory = Nothing
+                , hits = Dict.empty
+              }
             , Ports.disconnectOut ()
+            )
+
+        Copy str ->
+            ( model
+            , Ports.copy str
             )
 
 
@@ -577,6 +677,11 @@ getInventory token =
                 |> JDP.required "t10" JD.int
                 |> JDP.required "z" JD.int
                 |> JDP.required "total" JD.int
+                |> JDP.custom (JD.succeed False)
+                |> JD.map
+                    (\inv ->
+                        { inv | utilityAccess = inv.total > 0 }
+                    )
                 |> jsonResolver
         , timeout = Nothing
         }

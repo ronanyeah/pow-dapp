@@ -1,7 +1,8 @@
-module View exposing (view)
+module View exposing (truncateText, view)
 
 import BigInt
 import Colors exposing (..)
+import Dict
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -44,36 +45,22 @@ view model =
             , height fill
             , Font.size 19
             , mainFont
-
-            --, Background.color Colors2.greenDarnerTail
             , Background.gradient
                 { angle = degrees 30
                 , steps =
                     [ lightBlue
                     , lightPurple
                     , lightPurple
-
-                    --, lightPurple
                     , lightBlue
-
-                    --, lightPurple
                     , lightPurple
                     , lightPurple
                     , lightBlue
                     , lightPurple
                     , lightPurple
                     , lightBlue
-
-                    --
-                    --rgba255 34 0 51 0.9
-                    --, rgba255 17 0 34 0.9
-                    --, rgba255 68 0 102 0.9
-                    --, rgba255 34 0 51 0.9
                     ]
                         |> List.reverse
                 }
-
-            --, Background.image "/bg.png"
             ]
 
 
@@ -89,54 +76,7 @@ viewWide model =
                 , description = ""
                 }
     in
-    [ [ [ image [ height <| px 100 ]
-            { src = "/bang.png"
-            , description = ""
-            }
-        , text "POW"
-            |> el [ titleFont, Font.size 65 ]
-        ]
-            |> row [ centerX, spacing 20 ]
-            |> when False
-
-      --, [ text "The world's first proof-of-work NFT"
-      --]
-      --|> paragraph
-      --[ width <| px 300
-      --, Border.shadow
-      --{ blur = 0
-      --, color = black
-      --, offset = ( 2, 2 )
-      --, size = 2
-      --}
-      --, centerX
-      --, Font.size 19
-      --, alignBottom
-      --, alignRight
-      --, Background.color white
-      --, padding 5
-      --, moveRight 200
-      --, moveUp 20
-      --]
-      --|> inFront
-      , [ logo
-        , [ text "FREE MINT"
-                |> el []
-                |> wrapBox
-
-          --, text "XXth JANUARY"
-          , text "JANUARY 2024"
-                |> el []
-                |> wrapBox
-          , [ Img.solana 20
-            , text "SOLANA"
-                |> el []
-            ]
-                |> row [ spacing 10 ]
-                |> wrapBox
-          ]
-            |> column [ spacing 10, Font.size 15 ]
-            |> when False
+    [ [ [ logo
         , [ [ [ text "The world's first "
               , text "proof-of-work"
                     |> el [ comicFont ]
@@ -197,10 +137,10 @@ viewWide model =
                             ]
                             "Welcome to the POW keypair generator!"
                          , para [ Font.center, Font.italic ] "What do you want to do?"
-                         , text "Generate a POW NFT"
-                            |> btn (Just (SetViewGen True)) [ padding 10, Border.width 1, centerX ]
-                         , text "Generate a Solana vanity wallet"
-                            |> btn (Just (SetViewGen False)) [ padding 10, Border.width 1, centerX ]
+                         , text (bang ++ "  Generate a POW NFT")
+                            |> baseBtn (Just (SetViewGen True)) [ centerX ]
+                         , text "🪄  Generate a Solana vanity wallet"
+                            |> baseBtn (Just (SetViewGen False)) [ centerX ]
                          ]
                             |> column [ spacing 30, width fill, paddingXY 0 40 ]
                         )
@@ -212,8 +152,15 @@ viewWide model =
             ViewAvails ->
                 viewAvails model
 
-            ViewHits ->
-                viewHolder model
+            ViewHolder ->
+                case model.viewUtility of
+                    ViewInventory ->
+                        viewHolder model
+
+                    ViewUtility ->
+                        model.inventory
+                            |> unwrap (text "no inventory")
+                                (viewMemescan model)
         )
             |> el
                 [ Background.color white
@@ -222,10 +169,6 @@ viewWide model =
                 , height fill
                 , width fill
                 ]
-
-      --, viewGenerator model
-      --, viewPanel model
-      --|> el [ centerX, width fill ]
       ]
         |> column
             [ height fill
@@ -249,29 +192,6 @@ viewHolder model =
             |> el [ Font.bold, Font.size 22 ]
         ]
             |> row [ width fill, spaceEvenly ]
-      , case model.wsStatus of
-            Standby ->
-                text "Connect"
-                    |> btn (Just WsConnect) []
-                    |> when False
-
-            Connecting ->
-                spinner 40
-
-            Live ->
-                [ el
-                    [ Background.color (rgb255 0 255 0)
-                    , height <| px 20
-                    , width <| px 20
-                    , Border.rounded 10
-                    , style "animation" "pulse-border 1.5s infinite"
-                    ]
-                    none
-                , text "LIVE"
-                    |> el [ Font.bold ]
-                ]
-                    |> row [ spacing 10 ]
-                    |> when (model.wsStatus == Live)
       ]
         |> row [ width fill, spaceEvenly ]
     , model.wallet
@@ -314,15 +234,20 @@ viewHolder model =
                         , centerX
                         ]
                 , if wallet.token == Nothing then
-                    [ [ text "Sign in to proceed"
-                            |> btn (Just SignMessage)
-                                [ padding 10
-                                , Border.width 1
-                                ]
+                    [ [ text "🔐  Sign in to proceed"
+                            |> baseBtn
+                                (if model.walletInUse then
+                                    Nothing
+
+                                 else
+                                    Just SignMessage
+                                )
+                                []
                       , spinner 20
+                            |> el [ centerX ]
                             |> when model.walletInUse
                       ]
-                        |> row [ spacing 10, centerX ]
+                        |> column [ spacing 10, centerX ]
                     ]
                         |> column [ spacing 20, centerX ]
 
@@ -339,10 +264,8 @@ viewHolder model =
                              else
                                 [ text "Inventory failed to load"
                                 , text "Refresh"
-                                    |> btn (Just FetchInventory)
-                                        [ Border.width 1
-                                        , padding 10
-                                        , centerX
+                                    |> baseBtn (Just FetchInventory)
+                                        [ centerX
                                         ]
                                 ]
                                     |> column [ spacing 20, centerX ]
@@ -357,58 +280,90 @@ viewHolder model =
                                         ]
                                             |> row [ spacing 7, width fill ]
                                 in
-                                [ [ [ text (bang ++ " POW total:")
-                                        |> el [ Font.bold, Font.size 22 ]
-                                    , text (String.fromInt inventory.total)
-                                        |> el [ Font.size 22 ]
+                                [ [ [ text "Inventory"
+                                        |> el
+                                            [ Background.color black
+                                            , padding 10
+                                            , Font.color white
+                                            ]
+                                    , [ text (bang ++ " POW total:")
+                                            |> el [ Font.bold, Font.size 22 ]
+                                      , text (String.fromInt inventory.total)
+                                            |> el [ Font.size 22 ]
+                                      ]
+                                        |> row [ spacing 10, paddingXY 20 0 ]
                                     ]
-                                        |> row [ spacing 10, centerX ]
-                                  , [ text "Utility access:"
-                                        |> el [ Font.size 17 ]
-                                    , text
-                                        (if inventory.total > 0 then
-                                            "✅"
+                                        |> row [ width fill, spaceEvenly ]
+                                  , [ [ [ badge "1" inventory.t1
+                                        , badge "2" inventory.t2
+                                        , badge "3" inventory.t3
+                                        , badge "4" inventory.t4
+                                        ]
+                                            |> column [ spacing 10 ]
+                                      , [ badge "5" inventory.t5
+                                        , badge "6" inventory.t6
+                                        , badge "7" inventory.t7
+                                        , badge "8" inventory.t8
+                                        ]
+                                            |> column [ spacing 10 ]
+                                      , [ badge "9" inventory.t9
+                                        , badge "10" inventory.t10
+                                        , badge "Z" inventory.z
+                                            |> el [ alignBottom, width fill ]
+                                        ]
+                                            |> column [ spacing 10, height fill ]
+                                      ]
+                                        |> row
+                                            [ spacing 20
+                                            , Font.size 15
+                                            , Border.width 1
+                                            , padding 10
+                                            , centerX
+                                            ]
+                                    , text "Refresh"
+                                        |> btn (Just FetchInventory)
+                                            [ Font.size 15
+                                            , Font.underline
+                                            , centerX
+                                            ]
+                                    ]
+                                        |> column [ padding 10, spacing 10, width fill ]
+                                  ]
+                                    |> column
+                                        [ Border.width 1
+                                        , width fill
+                                        , spacing 10
+                                        ]
+                                , [ [ text "Tools"
+                                        |> el
+                                            [ Background.color black
+                                            , padding 10
+                                            , Font.color white
+                                            ]
+                                    , [ text "Access:"
+                                            |> el [ Font.size 17 ]
+                                      , text
+                                            (if inventory.utilityAccess then
+                                                "✅"
 
-                                         else
-                                            "❌"
-                                        )
+                                             else
+                                                "❌"
+                                            )
+                                      ]
+                                        |> row [ spacing 10, paddingXY 20 0 ]
                                     ]
-                                        |> row [ spacing 10, centerX ]
+                                        |> row [ width fill, spaceEvenly ]
+                                  , text (emTarget ++ "  Memecoin Liquidity Tracker")
+                                        |> btn (Just ToggleUtility)
+                                            [ Font.size 17
+                                            , Font.underline
+                                            , centerX
+                                            ]
+                                        |> el [ padding 20 ]
                                   ]
-                                    |> column [ spacing 20, centerX ]
-                                , [ [ badge "1" inventory.t1
-                                    , badge "2" inventory.t2
-                                    , badge "3" inventory.t3
-                                    , badge "4" inventory.t4
-                                    ]
-                                        |> column [ spacing 10 ]
-                                  , [ badge "5" inventory.t5
-                                    , badge "6" inventory.t6
-                                    , badge "7" inventory.t7
-                                    , badge "8" inventory.t8
-                                    ]
-                                        |> column [ spacing 10 ]
-                                  , [ badge "9" inventory.t9
-                                    , badge "10" inventory.t10
-                                    , badge "Z" inventory.z
-                                        |> el [ alignBottom, width fill ]
-                                    ]
-                                        |> column [ spacing 10, height fill ]
-                                  ]
-                                    |> row
-                                        [ spacing 20
-                                        , Font.size 15
-                                        , Border.width 1
-                                        , padding 10
-                                        ]
-                                , text "Refresh"
-                                    |> btn (Just FetchInventory)
-                                        [ Font.size 15
-                                        , Font.underline
-                                        , centerX
-                                        ]
+                                    |> column [ Border.width 1, width fill ]
                                 ]
-                                    |> column [ centerX, spacing 30 ]
+                                    |> column [ centerX, spacing 30, width fill ]
                             )
                 ]
                     |> column [ spacing 30, width fill ]
@@ -451,10 +406,8 @@ viewBubble k v =
                 |> row
                     [ spacing 10
                     , Font.size 13
-
-                    --, Background.color lightBlue
                     , padding 5
-                    , Border.rounded 10
+                    , Border.rounded 5
                     , Border.width 1
                     ]
         }
@@ -609,54 +562,7 @@ viewThin model =
                 , description = ""
                 }
     in
-    [ [ image [ height <| px 100 ]
-            { src = "/bang.png"
-            , description = ""
-            }
-      , text "POW"
-            |> el [ titleFont, Font.size 65 ]
-      ]
-        |> row [ centerX, spacing 20 ]
-        |> when False
-
-    --, [ text "The world's first proof-of-work NFT"
-    --]
-    --|> paragraph
-    --[ width <| px 300
-    --, Border.shadow
-    --{ blur = 0
-    --, color = black
-    --, offset = ( 2, 2 )
-    --, size = 2
-    --}
-    --, centerX
-    --, Font.size 19
-    --, alignBottom
-    --, alignRight
-    --, Background.color white
-    --, padding 5
-    --, moveRight 200
-    --, moveUp 20
-    --]
-    --|> inFront
-    , [ logo
-      , [ text "FREE MINT"
-            |> el []
-            |> wrapBox
-
-        --, text "XXth JANUARY"
-        , text "JANUARY 2024"
-            |> el []
-            |> wrapBox
-        , [ Img.solana 20
-          , text "SOLANA"
-                |> el []
-          ]
-            |> row [ spacing 10 ]
-            |> wrapBox
-        ]
-            |> column [ spacing 10, Font.size 15 ]
-            |> when False
+    [ [ logo
       , [ [ [ text "The world's first "
             , text "proof-of-work"
                 |> el [ comicFont ]
@@ -683,22 +589,6 @@ viewThin model =
                 ]
       ]
         |> row [ spacing 10, centerX ]
-
-    --, model.demoAddress
-    --|> List.indexedMap
-    --(\n txt ->
-    --if n == 0 then
-    --text txt
-    --else if n == 1 then
-    --text txt
-    --|> el
-    --[ Font.bold
-    --, Font.size 22
-    --]
-    --else
-    --text txt
-    --)
-    --|> row [ centerX, spacing 1 ]
     , [ viewNav model
       , case model.view of
             ViewHome ->
@@ -714,14 +604,10 @@ viewThin model =
             ViewAvails ->
                 text "avails"
 
-            ViewHits ->
+            ViewHolder ->
                 none
       ]
         |> column [ width fill, height fill ]
-
-    --, viewGenerator model
-    --, viewPanel model
-    --|> el [ centerX, width fill ]
     , viewBanner model
         |> el
             [ fork model.isMobile (width fill) centerX
@@ -769,10 +655,6 @@ viewGenerator model viewGen =
                         |> Input.labelAbove [ Font.size 15 ]
                 , onChange = EndChange
                 , placeholder = Nothing
-
-                --text "12345"
-                --|> Input.placeholder []
-                --|> Just
                 , text = model.endInput
                 }
     in
@@ -848,9 +730,7 @@ viewGenerator model viewGen =
             ]
             { onChange = GenSelect
             , selected = Just model.match
-            , label =
-                --viewH2 label |> Input.labelAbove []
-                Input.labelHidden ""
+            , label = Input.labelHidden ""
             , options =
                 let
                     prefix =
@@ -881,17 +761,6 @@ viewGenerator model viewGen =
                 MatchBoth ->
                     [ start
                     , end
-
-                    --, Input.text
-                    --[ width <| px 150
-                    --]
-                    --{ label =
-                    --text "Contains"
-                    --|> Input.labelAbove []
-                    --, onChange = ContainChange
-                    --, placeholder = Nothing
-                    --, text = model.containInput
-                    --}
                     ]
                         |> row [ spacing 15 ]
             )
@@ -958,9 +827,9 @@ viewGenerator model viewGen =
 
                                     else if List.member nft.tier completedTiers then
                                         text
-                                            ("Tier "
+                                            ("All Tier "
                                                 ++ String.fromInt nft.tier
-                                                ++ " Mint is completed"
+                                                ++ " NFTs have been claimed"
                                             )
 
                                     else
@@ -1010,8 +879,6 @@ viewGenerator model viewGen =
             [ spacing 5
             , height fill
             , scrollbarY
-
-            --, Background.color green
             , width fill
             , [ spinner 30
                     |> el [ centerX, padding 10 ]
@@ -1067,12 +934,7 @@ viewGenerator model viewGen =
 
 
 viewInfo _ =
-    [ text ("MINT GUIDE   " ++ bang)
-        |> el [ centerX, Font.size 35, comicFont ]
-        |> when False
-
-    --, [ text "POW is a free mint with a twist." ]
-    , [ text ("POW " ++ bang)
+    [ [ text ("POW " ++ bang)
             |> el [ titleFont ]
       , text " is a free mint that requires "
             |> el [ paddingXY 5 0 ]
@@ -1080,19 +942,19 @@ viewInfo _ =
             |> el [ titleFont ]
       ]
         |> paragraph [ Font.size 24, mainFont, Font.center ]
-    , "MINT NOW!"
-        |> para [ comicFont, Font.size 28, padding 10, Border.width 1 ]
+    , (bang ++ "  MINT NOW!")
+        |> para
+            [ comicFont
+            , Font.size 28
+            , padding 10
+            , Border.width 1
+            , Background.color green
+            ]
         |> btn (Just (SetView ViewMint))
             [ centerX
             , style "animation" "pulse 2s infinite"
             ]
-
-    --, [ ( bang
-    --, para [] "POW is a free mint with a twist."
-    --)
     , [ ( bang
-          --, para [] "Every NFT requires the degen to generate a specific solana keypair. These can be created with the 'solana-keygen' tool."
-          --, [ text "Every POW NFT requires a specific solana keypair to mint. These can be created by anyone using the "
         , [ text "Every POW NFT has a unique number ID that can only be minted once."
           ]
             |> paragraph []
@@ -1145,44 +1007,6 @@ viewInfo _ =
             [ spacing 30
             , height fill
             , scrollbarY
-            ]
-
-
-viewPanel model =
-    [ [ navBtn model.view "Mint" ViewMint
-      , navBtn model.view "Search" ViewAvails
-      , navBtn model.view "Generator" ViewGenerator
-      ]
-        |> row
-            [ spacing 5
-            , alignLeft
-            , Font.size (fork model.isMobile 13 19)
-            ]
-    , (case model.view of
-        ViewHome ->
-            none
-
-        ViewMint ->
-            viewMint model
-
-        ViewGenerator ->
-            none
-
-        ViewAvails ->
-            viewAvails model
-
-        ViewHits ->
-            none
-      )
-        |> el
-            [ Background.color white
-            , padding 20
-            , width fill
-            , shadow
-            ]
-    ]
-        |> column
-            [ width fill
             ]
 
 
@@ -1278,9 +1102,6 @@ viewKeypair model key =
                 |> el [ Font.underline ]
             , newTabLink [ hover, Font.underline ]
                 { url =
-                    --"https://solana.fm/tx/"
-                    --++ sig
-                    --++ explorerSuffix
                     "https://solscan.io/tx/"
                         ++ sig
                 , label = text "View transaction"
@@ -1394,17 +1215,14 @@ viewAvails model =
             , text = model.idInput
             }
         , text "Check id"
-            |> btn
+            |> baseBtn
                 (if model.idCheck.inProg then
                     Nothing
 
                  else
                     Just SubmitId
                 )
-                [ padding 10
-                , Border.width 1
-                , Background.color white
-                ]
+                []
         , spinner 30
             |> when model.idCheck.inProg
         ]
@@ -1506,14 +1324,7 @@ viewAvails model =
 
 
 viewBanner model =
-    [ --[ text ("The world's first proof-of-work NFT  " ++ bang)
-      --]
-      --|> paragraph
-      --[ Font.center
-      --, centerX
-      --, Font.size (fork model.isMobile 17 22)
-      --]
-      [ text "$"
+    [ [ text "$"
             |> el [ Font.color gold ]
       , text "solana-keygen grind"
       ]
@@ -1544,10 +1355,6 @@ viewBanner model =
                                 text txt
                         )
             )
-        --, style "animation-name" "enter"
-        --, style "animation-delay" (String.fromFloat delay ++ "s")
-        --, style "animation-duration" "1s"
-        --, style "animation-fill-mode" "forwards"
         |> List.concat
         |> row
             [ width fill
@@ -1576,6 +1383,10 @@ shadow =
         }
 
 
+monospaceFont =
+    Font.family [ Font.monospace ]
+
+
 comicFont =
     Font.family [ Font.typeface "Bangers" ]
 
@@ -1589,10 +1400,10 @@ blockFont =
 
 
 mainFont =
-    --Font.family [ Font.typeface "Roboto" ]
     Font.family [ Font.typeface "Montserrat Variable" ]
 
 
+btn : Maybe msg -> List (Attribute msg) -> Element msg -> Element msg
 btn msg attrs elem =
     Input.button
         ((if msg == Nothing then
@@ -1602,12 +1413,28 @@ btn msg attrs elem =
             [ hover ]
          )
             ++ attrs
-            ++ [--titleFont
-               ]
         )
         { onPress = msg
         , label = elem
         }
+
+
+baseBtn : Maybe msg -> List (Attribute msg) -> Element msg -> Element msg
+baseBtn msg attrs =
+    btn msg
+        (attrs
+            ++ [ padding 10
+               , Border.width 1
+               , Border.rounded 5
+               , Background.color green
+               , Border.shadow
+                    { blur = 0
+                    , color = black
+                    , offset = ( 2, 2 )
+                    , size = 1
+                    }
+               ]
+        )
 
 
 fade : Element.Attr a b
@@ -1633,8 +1460,7 @@ navBtn v txt v_ =
              else
                 Just (SetView v_)
             )
-            [ --, Border.width 2
-              Background.color
+            [ Background.color
                 (if active then
                     white
 
@@ -1669,16 +1495,11 @@ renderPowTrunc addr trunc =
             (\n txt ->
                 if n == 0 then
                     text txt
-                    --|> el
-                    --[ Font.italic
-                    --]
 
                 else if n == 1 then
                     text txt
                         |> el
                             [ Font.bold
-
-                            --, Font.size 20
                             ]
 
                 else
@@ -1692,8 +1513,6 @@ renderPowTrunc addr trunc =
             )
         |> row
             [ spacing 1
-
-            --, Font.size 16
             ]
 
 
@@ -1708,10 +1527,6 @@ nftLink mint =
         { url =
             "https://solscan.io/token/"
                 ++ mint
-
-        --"https://solana.fm/address/"
-        --++ pair.publicKey
-        --++ explorerSuffix
         , label = text "🔍 View NFT"
         }
 
@@ -1771,9 +1586,7 @@ viewNav model =
     , navBtn model.view "Search 🔍" ViewAvails
     , navBtn model.view "Grind 🎰" ViewGenerator
     , navBtn model.view ("Mint " ++ bang) ViewMint
-    , navBtn model.view "Holders 💎" ViewHits
-
-    --, navBtn model.view "Keygen 🎰" ViewGenerator
+    , navBtn model.view "Holders 💎" ViewHolder
     ]
         |> row
             [ spacing 10
@@ -1784,6 +1597,10 @@ viewNav model =
 
 bang =
     String.fromChar '💥'
+
+
+emTarget =
+    String.fromChar '🎯'
 
 
 fork bool a b =
@@ -1832,14 +1649,39 @@ formatFloat =
         }
 
 
+formatRound =
+    round
+        >> toFloat
+        >> FormatNumber.format
+            { usLocale
+                | decimals = FormatNumber.Locales.Exact 0
+            }
+
+
 formatBillion : BigInt.BigInt -> String
 formatBillion amount =
     let
         bil =
             BigInt.fromInt 1000000000
+
+        mil =
+            BigInt.fromInt 1000000
     in
-    if BigInt.lt amount bil then
-        "<1bn"
+    if BigInt.lt amount mil then
+        "<1m"
+
+    else if BigInt.lt amount bil then
+        (BigInt.div amount mil
+            |> BigInt.toString
+            |> String.toInt
+            |> Maybe.withDefault 999
+            |> toFloat
+            |> FormatNumber.format
+                { usLocale
+                    | decimals = FormatNumber.Locales.Exact 0
+                }
+        )
+            ++ "m"
 
     else
         (BigInt.div amount bil
@@ -1893,7 +1735,7 @@ selectWallet =
             [ spacing 15
             , Font.size 20
             , paddingXY 25 15
-            , Font.family [ Font.monospace ]
+            , monospaceFont
             , Font.bold
             , style "animation" "all 1s"
             ]
@@ -1924,3 +1766,250 @@ formatKeycount n =
 
     else
         String.fromInt (n // 1000) ++ "k"
+
+
+viewMemescan : Model -> Inventory -> Element Msg
+viewMemescan model inventory =
+    let
+        hitsPresent =
+            Dict.isEmpty model.hits
+                |> not
+
+        viewBulb col txt =
+            [ el
+                [ Background.color col
+                , height <| px 20
+                , width <| px 20
+                , Border.rounded 10
+                , style "animation" "pulse-border 1.5s infinite"
+                    |> whenAttr (txt == "LIVE")
+                ]
+                none
+            , text txt
+                |> el [ Font.bold ]
+            ]
+                |> row [ spacing 10 ]
+
+        titleElem =
+            text (emTarget ++ "  Memecoin Liquidity Tracker")
+                |> el [ Font.bold, Font.size 22 ]
+
+        backElem =
+            text "↩️  Back to inventory"
+                |> btn (Just ToggleUtility) [ Font.underline ]
+
+        connectElem =
+            text "📡  Connect"
+                |> baseBtn (Just WsConnect) []
+    in
+    if hitsPresent then
+        [ [ [ titleElem
+            , text "Live pool updates from Raydium"
+            ]
+                |> column [ spacing 10 ]
+          , case model.wsStatus of
+                Standby ->
+                    [ viewBulb (rgb255 255 0 0) "OFFLINE"
+                    , connectElem
+                        |> el [ Font.size 15 ]
+                    ]
+                        |> row [ spacing 10 ]
+                        |> when hitsPresent
+
+                Connecting ->
+                    spinner 40
+
+                Live ->
+                    [ viewBulb (rgb255 0 255 0) "LIVE"
+                    , text "❌  Disconnect"
+                        |> btn (Just WsDisconnect)
+                            [ Font.underline
+                            , Font.size 12
+                            , alignRight
+                            ]
+                    ]
+                        |> column [ spacing 10 ]
+          ]
+            |> row [ width fill, spaceEvenly ]
+        , if Dict.isEmpty model.hits then
+            spinner 40
+                |> el [ centerX ]
+
+          else
+            model.hits
+                |> Dict.values
+                |> List.sortBy (\x -> x.openTime)
+                |> List.reverse
+                |> List.map (viewPool model)
+                |> column [ spacing 40, width fill, height fill, scrollbarY ]
+        , [ backElem
+          , text "🧹  Clear results"
+                |> btn (Just ClearResults) [ Font.underline ]
+                |> when (hitsPresent && model.wsStatus == Standby)
+          ]
+            |> row [ spacing 20, alignRight, Font.size 16 ]
+        ]
+            |> column [ spacing 20, width fill, height fill ]
+
+    else
+        [ titleElem
+            |> el [ centerX ]
+        , para [ Font.center, cappedWidth 400, centerX ]
+            "This tool tracks all new memecoin liquidity pools created on Raydium, and displays them alongside real-time token analysis such as holder composition, mint authority status etc."
+        , if inventory.utilityAccess then
+            connectElem
+                |> el [ centerX ]
+
+          else
+            [ text "🚫  No Access"
+                |> el [ centerX ]
+            , text "You need to hold more POW NFTs."
+                |> el [ Font.italic, Font.size 15 ]
+            ]
+                |> column [ spacing 10, centerX, padding 10, Border.width 1 ]
+        , backElem
+            |> el [ centerX ]
+        ]
+            |> column [ spacing 30, paddingXY 0 30, centerX ]
+            |> el [ height fill, width fill ]
+
+
+viewPool model hit =
+    [ [ [ text "POOL"
+            |> el [ Font.bold ]
+        , text (String.left 8 hit.pool ++ "...")
+            |> el [ Font.size 15 ]
+        ]
+            |> row
+                [ spacing 10
+                ]
+            |> linkOut ("https://solscan.io/account/" ++ hit.pool)
+                [ Background.color black
+                , Font.color white
+                , padding 10
+                ]
+      , text ("⏰ " ++ formatTime model.now hit.openTime)
+            |> el [ paddingXY 10 0, monospaceFont ]
+      ]
+        |> row [ width fill, spaceEvenly ]
+    , [ [ [ text (truncateText 22 hit.name)
+                |> el [ Font.size 22, title hit.name ]
+          , text hit.symbol
+                |> el [ Font.bold, Font.size 15 ]
+          , text "📋"
+                |> btn (Just (Copy hit.mint))
+                    [ title hit.mint
+                    ]
+          ]
+            |> row [ spacing 10 ]
+        , text "Refresh"
+            |> btn (Just (RefreshPool hit.pool))
+                [ Font.underline
+                , Font.size 14
+                ]
+            |> when False
+        , viewBubble "Mint" hit.mint
+        ]
+            |> row [ width fill, spaceEvenly ]
+      , [ viewTag "Supply"
+            (hit.mintSupply
+                |> round
+                |> BigInt.fromInt
+                |> formatBillion
+            )
+        , viewTag "Mint Disabled"
+            (if hit.mintLocked then
+                "✅"
+
+             else
+                "❌"
+            )
+        ]
+            |> row [ width fill, spaceEvenly ]
+      , [ viewTag "Holders" (String.fromInt hit.holders)
+        , [ viewTag "Top 10" (formatRound hit.top10 ++ "%")
+          , viewTag "Top 20" (formatRound hit.top20 ++ "%")
+          ]
+            |> row [ width fill, spaceEvenly ]
+        ]
+            |> column [ width fill, spacing 10, padding 10, Border.width 1 ]
+      , [ [ viewBubble "Raydium Pool" hit.pool
+          , viewBubble "LP Mint" hit.lpMint
+          ]
+            |> row [ width fill, spaceEvenly ]
+        , [ viewTag "SOL reserve" (formatFloat hit.reserve)
+          , viewTag "Pool Age" (formatTime model.now hit.openTime)
+          ]
+            |> row [ width fill, spaceEvenly ]
+        , [ viewTag "Liquidity Burned"
+                (if hit.liquidityLocked then
+                    "✅"
+
+                 else
+                    "❌"
+                )
+          , viewTag "Supply In Pool" (formatRound hit.inPool ++ "%")
+          ]
+            |> row [ width fill, spaceEvenly ]
+        ]
+            |> column [ width fill, spacing 10, padding 10, Border.width 1 ]
+      , [ newTabLink [ hover, Font.size 15, Font.underline ]
+            { url =
+                "https://birdeye.so/token/" ++ hit.mint ++ "?chain=solana"
+            , label = text "Birdeye"
+            }
+        , newTabLink [ hover, Font.size 15, Font.underline ]
+            { url =
+                "https://dexscreener.com/solana/"
+                    ++ hit.mint
+            , label = text "Dexscreener"
+            }
+        , newTabLink [ hover, Font.size 15, Font.underline ]
+            { url =
+                "https://raydium.io/swap/?inputCurrency=sol&outputCurrency=" ++ hit.mint
+            , label = text "Swap on Raydium"
+            }
+        ]
+            |> row [ centerX, spacing 30 ]
+      ]
+        |> column [ width fill, spacing 20, padding 10 ]
+    ]
+        |> column
+            [ width fill
+            , Border.width 1
+            , shadow
+            , fadeIn
+            ]
+
+
+truncateText n txt =
+    let
+        len =
+            String.length txt
+    in
+    if len > n then
+        String.left (n - 3) txt ++ "..."
+
+    else
+        txt
+
+
+ellipsisText : Int -> String -> Element msg
+ellipsisText n txt =
+    Html.div
+        [ Html.Attributes.style "overflow" "hidden"
+        , Html.Attributes.style "text-overflow" "ellipsis"
+        , Html.Attributes.style "white-space" "nowrap"
+        , Html.Attributes.style "height" <| String.fromInt n ++ "px"
+        , Html.Attributes.style "display" "table-cell"
+        , Html.Attributes.title txt
+        ]
+        [ Html.text txt
+        ]
+        |> Element.html
+        |> el
+            [ width fill
+            , style "table-layout" "fixed"
+            , style "display" "table"
+            , Font.size n
+            ]

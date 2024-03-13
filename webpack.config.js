@@ -4,7 +4,7 @@ const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 
 const publicFolder = resolve("./public");
 
-const { RPC_URL, BACKEND } = process.env;
+const { RPC_URL, BACKEND, WS_URL } = process.env;
 
 module.exports = (env) => {
   const devMode = Boolean(env.WEBPACK_SERVE);
@@ -70,6 +70,7 @@ module.exports = (env) => {
       new webpack.NoEmitOnErrorsPlugin(),
       new webpack.DefinePlugin({
         __RPC_URL: JSON.stringify(RPC_URL),
+        __WS_URL: JSON.stringify(WS_URL),
       }),
     ],
   };

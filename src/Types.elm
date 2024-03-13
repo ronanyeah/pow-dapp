@@ -1,7 +1,8 @@
 module Types exposing (..)
 
+import Dict exposing (Dict)
 import Http
-import Json.Decode exposing (Value)
+import Json.Decode as JD exposing (Value)
 import Ports
 import Time
 
@@ -45,9 +46,10 @@ type alias Model =
     , screen : Screen
     , startTime : Int
     , now : Int
-    , hits : List Ports.Hit
+    , hits : Dict String PoolMintData
     , wsStatus : WsStatus
     , inventory : Maybe Inventory
+    , viewUtility : ViewHolderAcc
     }
 
 
@@ -63,7 +65,12 @@ type View
     | ViewMint
     | ViewAvails
     | ViewGenerator
-    | ViewHits
+    | ViewHolder
+
+
+type ViewHolderAcc
+    = ViewInventory
+    | ViewUtility
 
 
 type Msg
@@ -98,12 +105,18 @@ type Msg
     | GenSelect Match
     | StartTimeCb Int
     | Tick Time.Posix
-    | HitCb Ports.Hit
+    | HitCb (Result JD.Error PoolMintData)
     | WsConnect
+    | WsDisconnect
     | WsDisconnected
     | WsConnectCb Bool
+    | RefreshPool String
+    | RefreshCb (Result Http.Error PoolMintData)
     | SignInCb ( String, String )
     | FetchInventory
+    | ToggleUtility
+    | ClearResults
+    | Copy String
 
 
 type alias Screen =
@@ -149,4 +162,25 @@ type alias Inventory =
     , t10 : Int
     , z : Int
     , total : Int
+    , utilityAccess : Bool
+    }
+
+
+type alias PoolMintData =
+    { name : String
+    , reserve : Float
+    , mint : String
+    , lpMint : String
+    , liquidityLocked : Bool
+    , inPool : Float
+    , top50 : Float
+    , top20 : Float
+    , top10 : Float
+    , pool : String
+    , price : Int
+    , openTime : Int
+    , symbol : String
+    , mintSupply : Float
+    , mintLocked : Bool
+    , holders : Int
     }

@@ -6,7 +6,7 @@ import "@fontsource/bowlby-one-sc";
 import "@fontsource-variable/montserrat";
 import "@fontsource/bangers";
 import "@fontsource/ibm-plex-mono";
-import { ElmApp, Hit } from "./ports";
+import { ElmApp } from "./ports";
 import {
   signText,
   createPow,
@@ -17,9 +17,15 @@ import {
   RPC,
 } from "./web3";
 
+// @ts-ignore
+// eslint-disable-next-line no-undef
+const WS_URL = __WS_URL;
+
 const { Elm } = require("./Main.elm");
 
 let keygenWorkers: Worker[] | null = null;
+
+let ws: WebSocket | null = null;
 
 const solConnect = new SolanaConnect();
 
@@ -65,6 +71,14 @@ const solConnect = new SolanaConnect();
     }
   });
 
+  app.ports.wsConnect.subscribe((token) =>
+    (async () => {
+      setupWS(app, token);
+    })().catch((e) => {
+      console.error(e);
+    })
+  );
+
   app.ports.signIn.subscribe(() =>
     (async () => {
       const wallet = solConnect.getWallet();
@@ -94,6 +108,16 @@ const solConnect = new SolanaConnect();
 
   app.ports.openWalletMenu.subscribe(() => {
     solConnect.openMenu();
+  });
+
+  app.ports.copy.subscribe((val) => {
+    navigator.clipboard.writeText(val);
+  });
+
+  app.ports.wsDisconnect.subscribe(() => {
+    if (ws) {
+      ws.close();
+    }
   });
 
   app.ports.mintNft.subscribe((bytes) =>
@@ -226,3 +250,41 @@ const solConnect = new SolanaConnect();
 })().catch((e) => {
   console.error(e);
 });
+
+function setupWS(app: ElmApp, token: string) {
+  try {
+    ws = new WebSocket(WS_URL);
+  } catch (e) {
+    console.error(e);
+    return app.ports.wsConnectCb.send(false);
+  }
+
+  ws.addEventListener("open", () => {
+    if (ws) {
+      ws.send(token);
+      app.ports.wsConnectCb.send(true);
+    }
+  });
+
+  ws.addEventListener("error", (e) => {
+    console.error("ws error:", e);
+    if (ws) {
+      ws.close();
+    }
+  });
+
+  ws.addEventListener("close", async (e) => {
+    console.warn("ws close:", e);
+    ws = null;
+    app.ports.wsDisconnected.send(null);
+  });
+
+  ws.addEventListener("message", (ev) =>
+    (async () => {
+      const hit = JSON.parse(ev.data.toString());
+      app.ports.hitCb.send(hit);
+    })().catch((e) => {
+      console.error(e);
+    })
+  );
+}
