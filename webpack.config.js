@@ -41,6 +41,7 @@ module.exports = (env) => {
         {
           context: ["/api"],
           target: BACKEND,
+          changeOrigin: true,
         },
       ],
     },
