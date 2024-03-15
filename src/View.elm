@@ -68,13 +68,7 @@ viewWide : Model -> Element Msg
 viewWide model =
     let
         logo =
-            image
-                [ height <| px (fork model.isShort 170 250)
-                , style "animation" "pulse 2s infinite"
-                ]
-                { src = "/pow.png"
-                , description = ""
-                }
+            powLogo (fork model.isShort 170 250)
     in
     [ [ [ logo
         , [ [ [ text "The world's first "
@@ -129,22 +123,7 @@ viewWide model =
                 viewInfo model
 
             ViewGenerator ->
-                model.viewGen
-                    |> unwrap
-                        ([ para
-                            [ Font.center
-                            , Font.size 25
-                            ]
-                            "Welcome to the POW keypair generator!"
-                         , para [ Font.center, Font.italic ] "What do you want to do?"
-                         , text (bang ++ "  Generate a POW NFT")
-                            |> baseBtn (Just (SetViewGen True)) [ centerX ]
-                         , text "🪄  Generate a Solana vanity wallet"
-                            |> baseBtn (Just (SetViewGen False)) [ centerX ]
-                         ]
-                            |> column [ spacing 30, width fill, paddingXY 0 40 ]
-                        )
-                        (viewGenerator model)
+                viewGeneratorIntro model
 
             ViewMint ->
                 viewMint model
@@ -153,14 +132,7 @@ viewWide model =
                 viewAvails model
 
             ViewHolder ->
-                case model.viewUtility of
-                    ViewInventory ->
-                        viewHolder model
-
-                    ViewUtility ->
-                        model.inventory
-                            |> unwrap (text "no inventory")
-                                (viewMemescan model)
+                viewHolder model
         )
             |> el
                 [ Background.color white
@@ -186,8 +158,19 @@ viewWide model =
             ]
 
 
-viewHolder : Model -> Element Msg
 viewHolder model =
+    case model.viewUtility of
+        ViewInventory ->
+            viewInventory model
+
+        ViewUtility ->
+            model.inventory
+                |> unwrap (text "no inventory")
+                    (viewMemescan model)
+
+
+viewInventory : Model -> Element Msg
+viewInventory model =
     [ [ [ text ("Holder Access Area  " ++ bang)
             |> el [ Font.bold, Font.size 22 ]
         ]
@@ -553,61 +536,114 @@ viewMintRow tier count max status addr =
 viewThin : Model -> Element Msg
 viewThin model =
     let
-        logo =
-            image
-                [ height <| px (fork model.isMobile 170 250)
-                , style "animation" "pulse 2s infinite"
+        header =
+            if model.view == ViewHome then
+                [ [ powLogo 120
+                        |> el [ centerX ]
+                  , viewX
+                  ]
+                    |> column [ spacing 10, centerX ]
+                , [ [ [ text "The world's first "
+                      , text "proof-of-work"
+                            |> el [ comicFont ]
+                      , text " NFT"
+                      ]
+                        |> paragraph [ Font.center ]
+                    , text bang
+                        |> el [ centerX ]
+                    ]
+                        |> column
+                            [ Background.color white
+                            , spacing 15
+                            , padding 10
+                            , shadow
+                            , Font.size (fork model.isMobile 19 24)
+                            , width fill
+                            ]
+                  ]
+                    |> column
+                        [ cappedWidth (fork model.isMobile 160 250)
+                        , spacing 20
+                        ]
                 ]
-                { src = "/pow.png"
-                , description = ""
-                }
+                    |> row [ width fill, spaceEvenly ]
+
+            else
+                [ powLogo 30
+                    |> btn (Just (SetView ViewHome)) []
+                , text "☰"
+                    |> el
+                        [ Font.size 20
+                        , padding 10
+                        , Background.color green
+                        , if model.menuDropdown then
+                            Border.roundEach
+                                { bottomLeft = 0
+                                , bottomRight = 0
+                                , topLeft = 10
+                                , topRight = 10
+                                }
+
+                          else
+                            Border.rounded 10
+                        ]
+                    |> btn (Just ToggleDropdown) []
+                ]
+                    |> row
+                        [ width fill
+                        , spaceEvenly
+                        , navContent
+                            |> List.drop 1
+                            |> List.map
+                                (\( txt, v ) ->
+                                    text txt
+                                        |> btn (Just (SetView v)) []
+                                )
+                            |> column
+                                [ spacing 20
+                                , Background.color green
+                                , alignRight
+                                , padding 20
+                                , Border.roundEach
+                                    { bottomLeft = 10
+                                    , bottomRight = 10
+                                    , topLeft = 10
+                                    , topRight = 0
+                                    }
+                                ]
+                            |> below
+                            |> whenAttr model.menuDropdown
+                        ]
     in
-    [ [ logo
-      , [ [ [ text "The world's first "
-            , text "proof-of-work"
-                |> el [ comicFont ]
-            , text " NFT"
-            ]
-                |> paragraph [ Font.center ]
-          , text bang
-                |> el [ centerX ]
-          ]
-            |> column
-                [ Background.color white
-                , spacing 15
-                , padding 10
-                , shadow
-                , Font.size (fork model.isMobile 19 24)
-                , width fill
-                ]
-        , viewX
-            |> el [ centerX ]
-        ]
-            |> column
-                [ cappedWidth (fork model.isMobile 160 250)
-                , spacing 20
-                ]
-      ]
-        |> row [ spacing 10, centerX ]
-    , [ viewNav model
-      , case model.view of
+    [ header
+    , [ viewNavMobile model
+            |> when (model.view == ViewHome)
+      , (case model.view of
             ViewHome ->
                 viewInfo model
 
             ViewGenerator ->
-                --viewGenerator model
-                text "mint"
+                viewGeneratorIntro model
 
             ViewMint ->
                 viewMint model
 
             ViewAvails ->
-                text "avails"
+                viewAvails model
 
             ViewHolder ->
-                none
+                viewHolder model
+        )
+            |> el
+                [ Background.color white
+                , paddingXY (fork model.isMobile 15 30) 20
+                , shadow
+                , height fill
+                , width fill
+                , scrollbarY
+                ]
       ]
-        |> column [ width fill, height fill ]
+        |> column [ spacing 10, width fill, height fill ]
     , viewBanner model
         |> el
             [ fork model.isMobile (width fill) centerX
@@ -626,6 +662,25 @@ viewThin model =
             , scrollbarY
                 |> whenAttr model.isMobile
             ]
+
+
+viewGeneratorIntro model =
+    model.viewGen
+        |> unwrap
+            ([ para
+                [ Font.center
+                , Font.size 25
+                ]
+                "Welcome to the POW keypair generator!"
+             , para [ Font.center, Font.italic ] "What do you want to do?"
+             , text (bang ++ "  Generate a POW NFT")
+                |> baseBtn (Just (SetViewGen True)) [ centerX ]
+             , text "🪄  Generate a Solana vanity wallet"
+                |> baseBtn (Just (SetViewGen False)) [ centerX ]
+             ]
+                |> column [ spacing 30, width fill, paddingXY 0 40 ]
+            )
+            (viewGenerator model)
 
 
 viewGenerator model viewGen =
@@ -1044,17 +1099,36 @@ viewMint model =
                     |> column [ spacing 20 ]
 
              else
-                [ para [] "You will need to provide a Solana keypair file that begins with 'pow', followed by a number."
-                , text "Examples:"
-                , renderPow [ "pow", "8", "i1DzJkTqEuEPAViZFWheptCohFEhCwzRX7epZCj" ]
-                    |> el [ Font.size 16 ]
-                , renderPow [ "pow", "297", "i8QJcqU8QbdpaHYLCgnvMqVwf3c8DnEcB3ZLg" ]
-                    |> el [ Font.size 16 ]
-                , renderPow [ "pow", "11", "S27f9ju6QP8kBAC3XaVXYFynygkqd6zmjnbaPw" ]
-                    |> el [ Font.size 16 ]
+                [ text (bang ++ "  POW NFT Mint")
+                    |> el [ Font.bold, centerX ]
+                , para [] "You will need to provide a Solana keypair file that begins with 'pow', followed by a number."
+                , [ text "Examples:"
+                        |> el [ Font.italic ]
+                  , renderPowLink model.isMobile
+                        [ "pow"
+                        , "985"
+                        , "Q4pDoFu2717KWq9otDP6chkiTdXbb2B7eKAwo"
+                        ]
+                  , renderPowLink model.isMobile
+                        [ "pow"
+                        , "4269"
+                        , "mWh13DW3DvgBTuZyA33gr1KX2GcsQMhXumgX"
+                        ]
+                  , renderPowLink model.isMobile
+                        [ "pow"
+                        , "56136"
+                        , "HjhNPQZfTujY9c4Ecr8GPFGM1vXm1T6GMc5"
+                        ]
+                  ]
+                    |> column
+                        [ spacing 10
+                        , Border.width 1
+                        , padding 10
+                        , Font.size 16
+                        ]
                 , select
                 ]
-                    |> column [ spacing 20 ]
+                    |> column [ spacing 20, width fill ]
             )
             (viewKeypair model)
     , model.keypairMessage
@@ -1179,13 +1253,7 @@ viewKeypair model key =
                                             ]
                                                 |> column [ spacing 20, centerX ]
                                         )
-                                        (\mint ->
-                                            [ text ("POW #" ++ idStr ++ " has already been claimed")
-                                                |> el [ Font.italic ]
-                                            , nftLinkWTensor mint
-                                            ]
-                                                |> column [ spacing 20 ]
-                                        )
+                                        (viewClaimedPOW nft.id)
                                     )
                     )
     ]
@@ -1194,7 +1262,7 @@ viewKeypair model key =
 
 viewAvails model =
     [ para [ Font.bold ] "Find your next POW NFT!"
-    , [ para [ Font.italic ] "Enter an NFT ID to check if it is available"
+    , [ para [ Font.italic ] "Enter an NFT ID to check if it is available:"
       , [ Input.text
             [ width <| px 170
             , Html.Attributes.type_ "number"
@@ -1222,9 +1290,11 @@ viewAvails model =
                  else
                     Just SubmitId
                 )
-                []
-        , spinner 30
-            |> when model.idCheck.inProg
+                [ spinner 20
+                    |> el [ centerY, paddingXY 10 0 ]
+                    |> onRight
+                    |> whenAttr model.idCheck.inProg
+                ]
         ]
             |> row [ spacing 20 ]
       , model.searchMessage
@@ -1306,21 +1376,23 @@ viewAvails model =
                                     ]
                                         |> column [ spacing 20 ]
                                 )
-                                (\addr ->
-                                    [ text ("POW #" ++ idStr ++ " has already been claimed")
-                                        |> el [ Font.size 22, centerX ]
-                                    , nftLinkWTensor addr
-                                    ]
-                                        |> column [ spacing 20 ]
-                                )
+                                (viewClaimedPOW id)
                             )
                 )
     ]
         |> column
-            [ spacing 10
+            [ spacing 20
             , height fill
             , scrollbarY
             ]
+
+
+viewClaimedPOW : Int -> String -> Element msg
+viewClaimedPOW id mint =
+    [ para [ Font.size 20, Font.italic ] ("POW #" ++ String.fromInt id ++ " has already been claimed.")
+    , nftLinkWTensor mint
+    ]
+        |> column [ spacing 20 ]
 
 
 viewBanner model =
@@ -1485,6 +1557,15 @@ navBtn v txt v_ =
             ]
 
 
+renderPowLink trunc parts =
+    renderPowTrunc parts trunc
+        |> linkOut
+            ("https://solscan.io/account/"
+                ++ String.concat parts
+            )
+            []
+
+
 renderPow addr =
     renderPowTrunc addr False
 
@@ -1569,30 +1650,76 @@ viewX =
         }
 
 
-wrapBox =
-    el
-        [ Background.color white
-        , padding 10
-        , shadow
-        ]
-
-
 fadeIn =
     style "animation" "fadeIn 1s"
 
 
+viewNavMobile model =
+    navContent
+        |> List.drop 1
+        |> List.map
+            (\( txt, v_ ) ->
+                let
+                    active =
+                        v == v_
+
+                    v =
+                        model.view
+                in
+                text txt
+                    |> btn
+                        (if active then
+                            Nothing
+
+                         else
+                            Just (SetView v_)
+                        )
+                        [ Background.color
+                            (if active then
+                                white
+
+                             else
+                                navy
+                            )
+                        , Font.color
+                            (if active then
+                                navy
+
+                             else
+                                white
+                            )
+                        , Border.color navy
+                        , paddingXY 10 10
+                        , Border.rounded 10
+                        , Font.size 13
+                        ]
+            )
+        |> row
+            [ spaceEvenly
+            , width fill
+            ]
+
+
 viewNav model =
-    [ navBtn model.view "🏠" ViewHome
-    , navBtn model.view "Search 🔍" ViewAvails
-    , navBtn model.view "Grind 🎰" ViewGenerator
-    , navBtn model.view ("Mint " ++ bang) ViewMint
-    , navBtn model.view "Holders 💎" ViewHolder
-    ]
+    navContent
+        |> List.map
+            (\( k, v ) ->
+                navBtn model.view k v
+            )
         |> row
             [ spacing 10
             , width fill
             , Font.size (fork model.isMobile 16 19)
             ]
+
+
+navContent =
+    [ ( "🏠", ViewHome )
+    , ( "Search 🔍", ViewAvails )
+    , ( "Grind 🎰", ViewGenerator )
+    , ( "Mint " ++ bang, ViewMint )
+    , ( "Holders 💎", ViewHolder )
+    ]
 
 
 bang =
@@ -2013,3 +2140,13 @@ ellipsisText n txt =
             , style "display" "table"
             , Font.size n
             ]
+
+
+powLogo size =
+    image
+        [ height <| px size
+        , style "animation" "pulse 2s infinite"
+        ]
+        { src = "/pow.png"
+        , description = ""
+        }

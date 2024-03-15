@@ -164,6 +164,13 @@ update msg model =
             , Cmd.none
             )
 
+        ToggleDropdown ->
+            ( { model
+                | menuDropdown = not model.menuDropdown
+              }
+            , Cmd.none
+            )
+
         ToggleUtility ->
             ( { model
                 | viewUtility =
@@ -363,6 +370,7 @@ update msg model =
         SetView v ->
             ( { model
                 | view = v
+                , menuDropdown = False
               }
             , Ports.wsDisconnect ()
             )

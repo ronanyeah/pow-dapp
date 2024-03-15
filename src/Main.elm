@@ -61,6 +61,7 @@ init flags =
       , hits = Dict.empty
       , wsStatus = Standby
       , viewUtility = ViewInventory
+      , menuDropdown = False
       }
     , Cmd.none
     )

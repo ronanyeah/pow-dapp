@@ -50,6 +50,7 @@ type alias Model =
     , wsStatus : WsStatus
     , inventory : Maybe Inventory
     , viewUtility : ViewHolderAcc
+    , menuDropdown : Bool
     }
 
 
@@ -117,6 +118,7 @@ type Msg
     | ToggleUtility
     | ClearResults
     | Copy String
+    | ToggleDropdown
 
 
 type alias Screen =
