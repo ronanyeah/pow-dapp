@@ -1628,7 +1628,7 @@ nftLinkWTensor mint =
 tensorLink =
     newTabLink [ hover, Font.underline ]
         { url = "https://www.tensor.trade/trade/pow"
-        , label = text "Trade on Tensor  📊"
+        , label = text "⚡ Buy on Tensor"
         }
 
 
@@ -1990,10 +1990,11 @@ viewMemescan model inventory =
           else
             [ text "🚫  No Access"
                 |> el [ centerX ]
-            , text "You need to hold more POW NFTs."
-                |> el [ Font.italic, Font.size 15 ]
+            , para [ Font.italic, Font.size 15 ] "You need to hold more POW NFTs."
+            , tensorLink
+                |> el [ centerX, Font.size 15 ]
             ]
-                |> column [ spacing 10, centerX, padding 10, Border.width 1 ]
+                |> column [ spacing 20, centerX, padding 10, Border.width 1 ]
         , backElem
             |> el [ centerX ]
         ]
