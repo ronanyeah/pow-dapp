@@ -652,10 +652,8 @@ viewThin model =
         |> when (model.view == ViewHome)
     ]
         |> column
-            [ padding
-                (fork model.isMobile 20 25)
-            , spacing
-                (fork model.isMobile 20 25)
+            [ padding 15
+            , spacing 10
             , height fill
             , fork model.isMobile (width fill) centerX
             , fadeIn
@@ -1918,8 +1916,16 @@ viewMemescan model inventory =
                 |> row [ spacing 10 ]
 
         titleElem =
-            text (emTarget ++ "  Memecoin Liquidity Tracker")
-                |> el [ Font.bold, Font.size 22 ]
+            let
+                txt =
+                    emTarget ++ "  Memecoin Liquidity Tracker"
+            in
+            if model.isMobile then
+                para [ Font.size 18, Font.bold ] txt
+
+            else
+                text txt
+                    |> el [ Font.bold, Font.size 22 ]
 
         backElem =
             text "↩️  Back to inventory"
@@ -1932,15 +1938,20 @@ viewMemescan model inventory =
     if hitsPresent then
         [ [ [ titleElem
             , text "Live pool updates from Raydium"
+                |> when (not model.isMobile)
             ]
-                |> column [ spacing 10 ]
+                |> column
+                    [ spacing 10
+                    , width fill
+                        |> whenAttr model.isMobile
+                    ]
           , case model.wsStatus of
                 Standby ->
                     [ viewBulb (rgb255 255 0 0) "OFFLINE"
                     , connectElem
                         |> el [ Font.size 15 ]
                     ]
-                        |> row [ spacing 10 ]
+                        |> fork model.isMobile column row [ spacing 10 ]
                         |> when hitsPresent
 
                 Connecting ->
@@ -1979,8 +1990,8 @@ viewMemescan model inventory =
             |> column [ spacing 20, width fill, height fill ]
 
     else
-        [ titleElem
-            |> el [ centerX ]
+        [ para [ Font.bold, Font.size 22, Font.center ]
+            (emTarget ++ "  Memecoin Liquidity Tracker")
         , para [ Font.center, cappedWidth 400, centerX ]
             "This tool tracks all new memecoin liquidity pools created on Raydium, and displays them alongside real-time token analysis such as holder composition, mint authority status etc."
         , if inventory.utilityAccess then
@@ -2003,6 +2014,14 @@ viewMemescan model inventory =
 
 
 viewPool model hit =
+    let
+        axis =
+            if model.isMobile then
+                column [ width fill, spacing 10 ]
+
+            else
+                row [ width fill, spaceEvenly ]
+    in
     [ [ [ text "POOL"
             |> el [ Font.bold ]
         , text (String.left 8 hit.pool ++ "...")
@@ -2017,7 +2036,11 @@ viewPool model hit =
                 , padding 10
                 ]
       , text ("⏰ " ++ formatTime model.now hit.openTime)
-            |> el [ paddingXY 10 0, monospaceFont ]
+            |> el
+                [ paddingXY 10 0
+                , monospaceFont
+                , Font.size (fork model.isMobile 15 19)
+                ]
       ]
         |> row [ width fill, spaceEvenly ]
     , [ [ [ text (truncateText 22 hit.name)
@@ -2029,7 +2052,12 @@ viewPool model hit =
                     [ title hit.mint
                     ]
           ]
-            |> row [ spacing 10 ]
+            |> (if model.isMobile then
+                    wrappedRow [ width fill, spacing 10 ]
+
+                else
+                    row [ spacing 10 ]
+               )
         , text "Refresh"
             |> btn (Just (RefreshPool hit.pool))
                 [ Font.underline
@@ -2038,7 +2066,7 @@ viewPool model hit =
             |> when False
         , viewBubble "Mint" hit.mint
         ]
-            |> row [ width fill, spaceEvenly ]
+            |> axis
       , [ viewTag "Supply"
             (hit.mintSupply
                 |> round
@@ -2053,22 +2081,22 @@ viewPool model hit =
                 "❌"
             )
         ]
-            |> row [ width fill, spaceEvenly ]
+            |> axis
       , [ viewTag "Holders" (String.fromInt hit.holders)
         , [ viewTag "Top 10" (formatRound hit.top10 ++ "%")
           , viewTag "Top 20" (formatRound hit.top20 ++ "%")
           ]
-            |> row [ width fill, spaceEvenly ]
+            |> axis
         ]
             |> column [ width fill, spacing 10, padding 10, Border.width 1 ]
       , [ [ viewBubble "Raydium Pool" hit.pool
           , viewBubble "LP Mint" hit.lpMint
           ]
-            |> row [ width fill, spaceEvenly ]
+            |> axis
         , [ viewTag "SOL reserve" (formatFloat hit.reserve)
           , viewTag "Pool Age" (formatTime model.now hit.openTime)
           ]
-            |> row [ width fill, spaceEvenly ]
+            |> axis
         , [ viewTag "Liquidity Burned"
                 (if hit.liquidityLocked then
                     "✅"
@@ -2078,7 +2106,7 @@ viewPool model hit =
                 )
           , viewTag "Supply In Pool" (formatRound hit.inPool ++ "%")
           ]
-            |> row [ width fill, spaceEvenly ]
+            |> axis
         ]
             |> column [ width fill, spacing 10, padding 10, Border.width 1 ]
       , [ newTabLink [ hover, Font.size 15, Font.underline ]
@@ -2098,7 +2126,12 @@ viewPool model hit =
             , label = text "Swap on Raydium"
             }
         ]
-            |> row [ centerX, spacing 30 ]
+            |> (if model.isMobile then
+                    row [ width fill, spaceEvenly ]
+
+                else
+                    row [ centerX, spacing 30 ]
+               )
       ]
         |> column [ width fill, spacing 20, padding 10 ]
     ]
