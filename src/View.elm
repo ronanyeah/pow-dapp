@@ -1,4 +1,4 @@
-module View exposing (truncateText, view)
+module View exposing (view)
 
 import BigInt
 import Colors exposing (..)
@@ -8,6 +8,7 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Float.Extra
 import FormatNumber
 import FormatNumber.Locales exposing (usLocale)
 import Helpers.View exposing (cappedHeight, cappedWidth, onKeydown, style, when, whenAttr, whenJust)
@@ -17,6 +18,7 @@ import Html.Events
 import Img
 import Json.Decode as JD
 import Json.Encode as JE
+import List.Extra
 import Maybe.Extra exposing (unwrap)
 import Misc exposing (..)
 import Types exposing (..)
@@ -164,9 +166,9 @@ viewHolder model =
             viewInventory model
 
         ViewUtility ->
-            model.inventory
-                |> unwrap (text "no inventory")
-                    (viewMemescan model)
+            model.wallet
+                |> unwrap (text "no wallet")
+                    (.holder >> viewMemescan model)
 
 
 viewInventory : Model -> Element Msg
@@ -235,7 +237,7 @@ viewInventory model =
                         |> column [ spacing 20, centerX ]
 
                   else
-                    model.inventory
+                    [ model.inventory
                         |> unwrap
                             (if model.walletInUse then
                                 [ text "Inventory loading"
@@ -245,13 +247,10 @@ viewInventory model =
                                     |> column [ spacing 20, centerX ]
 
                              else
-                                [ text "Inventory failed to load"
-                                , text "Refresh"
+                                text "Load inventory"
                                     |> baseBtn (Just FetchInventory)
                                         [ centerX
                                         ]
-                                ]
-                                    |> column [ spacing 20, centerX ]
                             )
                             (\inventory ->
                                 let
@@ -317,37 +316,39 @@ viewInventory model =
                                         , width fill
                                         , spacing 10
                                         ]
-                                , [ [ text "Tools"
-                                        |> el
-                                            [ Background.color black
-                                            , padding 10
-                                            , Font.color white
-                                            ]
-                                    , [ text "Access:"
-                                            |> el [ Font.size 17 ]
-                                      , text
-                                            (if inventory.utilityAccess then
-                                                "✅"
-
-                                             else
-                                                "❌"
-                                            )
-                                      ]
-                                        |> row [ spacing 10, paddingXY 20 0 ]
-                                    ]
-                                        |> row [ width fill, spaceEvenly ]
-                                  , text (emTarget ++ "  Memecoin Liquidity Tracker")
-                                        |> btn (Just ToggleUtility)
-                                            [ Font.size 17
-                                            , Font.underline
-                                            , centerX
-                                            ]
-                                        |> el [ padding 20 ]
-                                  ]
-                                    |> column [ Border.width 1, width fill ]
                                 ]
                                     |> column [ centerX, spacing 30, width fill ]
                             )
+                    , [ [ text "Tools"
+                            |> el
+                                [ Background.color black
+                                , padding 10
+                                , Font.color white
+                                ]
+                        , [ text "Access:"
+                                |> el [ Font.size 17 ]
+                          , text
+                                (if wallet.holder then
+                                    "✅"
+
+                                 else
+                                    "❌"
+                                )
+                          ]
+                            |> row [ spacing 10, paddingXY 20 0 ]
+                        ]
+                            |> row [ width fill, spaceEvenly ]
+                      , text (emTarget ++ "  Memecoin Liquidity Tracker")
+                            |> btn (Just ToggleUtility)
+                                [ Font.size 17
+                                , Font.underline
+                                , centerX
+                                ]
+                            |> el [ padding 20 ]
+                      ]
+                        |> column [ Border.width 1, width fill ]
+                    ]
+                        |> column [ spacing 30, width fill ]
                 ]
                     |> column [ spacing 30, width fill ]
             )
@@ -1893,11 +1894,11 @@ formatKeycount n =
         String.fromInt (n // 1000) ++ "k"
 
 
-viewMemescan : Model -> Inventory -> Element Msg
-viewMemescan model inventory =
+viewMemescan : Model -> Bool -> Element Msg
+viewMemescan model utilityAccess =
     let
-        hitsPresent =
-            Dict.isEmpty model.hits
+        poolsPresent =
+            Dict.isEmpty model.pools
                 |> not
 
         viewBulb col txt =
@@ -1935,7 +1936,7 @@ viewMemescan model inventory =
             text "📡  Connect"
                 |> baseBtn (Just WsConnect) []
     in
-    if hitsPresent then
+    if poolsPresent then
         [ [ [ titleElem
             , text "Live pool updates from Raydium"
                 |> when (not model.isMobile)
@@ -1952,7 +1953,7 @@ viewMemescan model inventory =
                         |> el [ Font.size 15 ]
                     ]
                         |> fork model.isMobile column row [ spacing 10 ]
-                        |> when hitsPresent
+                        |> when poolsPresent
 
                 Connecting ->
                     spinner 40
@@ -1969,12 +1970,12 @@ viewMemescan model inventory =
                         |> column [ spacing 10 ]
           ]
             |> row [ width fill, spaceEvenly ]
-        , if Dict.isEmpty model.hits then
+        , if Dict.isEmpty model.pools then
             spinner 40
                 |> el [ centerX ]
 
           else
-            model.hits
+            model.pools
                 |> Dict.values
                 |> List.sortBy (\x -> x.openTime)
                 |> List.reverse
@@ -1983,7 +1984,7 @@ viewMemescan model inventory =
         , [ backElem
           , text "🧹  Clear results"
                 |> btn (Just ClearResults) [ Font.underline ]
-                |> when (hitsPresent && model.wsStatus == Standby)
+                |> when (poolsPresent && model.wsStatus == Standby)
           ]
             |> row [ spacing 20, alignRight, Font.size 16 ]
         ]
@@ -1994,7 +1995,7 @@ viewMemescan model inventory =
             (emTarget ++ "  Memecoin Liquidity Tracker")
         , para [ Font.center, cappedWidth 400, centerX ]
             "This tool tracks all new memecoin liquidity pools created on Raydium, and displays them alongside real-time token analysis such as holder composition, mint authority status etc."
-        , if inventory.utilityAccess then
+        , if utilityAccess then
             connectElem
                 |> el [ centerX ]
 
@@ -2082,6 +2083,10 @@ viewPool model hit =
             )
         ]
             |> axis
+      , [ viewTag "Price" ("$" ++ formatTinyPrice hit.price)
+        , viewTag "Market Cap" ("$" ++ formatFloat (hit.price * hit.mintSupply * model.solPrice))
+        ]
+            |> axis
       , [ viewTag "Holders" (String.fromInt hit.holders)
         , [ viewTag "Top 10" (formatRound hit.top10 ++ "%")
           , viewTag "Top 20" (formatRound hit.top20 ++ "%")
@@ -2089,11 +2094,18 @@ viewPool model hit =
             |> axis
         ]
             |> column [ width fill, spacing 10, padding 10, Border.width 1 ]
+            |> when False
       , [ [ viewBubble "Raydium Pool" hit.pool
           , viewBubble "LP Mint" hit.lpMint
           ]
             |> axis
-        , [ viewTag "SOL reserve" (formatFloat hit.reserve)
+        , [ viewTag "SOL reserve"
+                (if hit.reserve < 0.5 then
+                    "RUGGED"
+
+                 else
+                    formatFloat hit.reserve
+                )
           , viewTag "Pool Age" (formatTime model.now hit.openTime)
           ]
             |> axis
@@ -2141,6 +2153,41 @@ viewPool model hit =
             , shadow
             , fadeIn
             ]
+
+
+formatTinyPrice fl =
+    let
+        str =
+            if fl > 0.000001 then
+                String.fromFloat fl
+
+            else
+                fl
+                    |> Float.Extra.toFixedSignificantDigits 200
+
+        chars =
+            str
+                |> String.split "."
+                |> List.drop 1
+                |> List.head
+                |> Maybe.withDefault "ok"
+                |> String.toList
+
+        zeroes =
+            chars
+                |> List.Extra.takeWhile ((==) '0')
+                |> List.length
+
+        suff =
+            List.drop zeroes chars
+                |> List.take 3
+                |> String.fromList
+    in
+    if zeroes < 4 then
+        Float.Extra.toFixedSignificantDigits 3 fl
+
+    else
+        "0.0(" ++ String.fromInt zeroes ++ ")" ++ suff
 
 
 truncateText n txt =

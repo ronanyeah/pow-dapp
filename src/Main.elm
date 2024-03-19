@@ -3,7 +3,7 @@ module Main exposing (main)
 import Browser
 import Dict
 import Json.Decode as JD
-import Misc exposing (decodeHit)
+import Misc exposing (decodeWsMsg)
 import Ports
 import Time
 import Types exposing (..)
@@ -23,7 +23,20 @@ main =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    ( { wallet = Nothing
+    ( { wallet =
+            flags.jwt
+                |> Maybe.andThen
+                    (\token ->
+                        Misc.parseJWT token
+                            |> Maybe.map
+                                (\( addr, holder ) ->
+                                    { address = addr
+                                    , token = Just token
+                                    , adapterConnected = False
+                                    , holder = holder
+                                    }
+                                )
+                    )
       , keypairMessage = Nothing
       , err = Nothing
       , loadedKeypair = Nothing
@@ -58,10 +71,11 @@ init flags =
       , match = MatchStart
       , startTime = 0
       , now = flags.now
-      , hits = Dict.empty
+      , pools = Dict.empty
       , wsStatus = Standby
       , viewUtility = ViewInventory
       , menuDropdown = False
+      , solPrice = 0.0
       }
     , Cmd.none
     )
@@ -78,7 +92,7 @@ subscriptions _ =
         , Ports.mintCb MintCb
         , Ports.grindCb GrindCb
         , Ports.countCb CountCb
-        , Ports.hitCb (JD.decodeValue decodeHit >> HitCb)
+        , Ports.hitCb (JD.decodeValue decodeWsMsg >> HitCb)
         , Ports.signInCb SignInCb
         , Ports.startTimeCb StartTimeCb
         , Ports.wsConnectCb WsConnectCb

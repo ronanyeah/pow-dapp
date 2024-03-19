@@ -46,11 +46,12 @@ type alias Model =
     , screen : Screen
     , startTime : Int
     , now : Int
-    , hits : Dict String PoolMintData
+    , pools : Dict String PoolMintData
     , wsStatus : WsStatus
     , inventory : Maybe Inventory
     , viewUtility : ViewHolderAcc
     , menuDropdown : Bool
+    , solPrice : Float
     }
 
 
@@ -58,6 +59,7 @@ type alias Flags =
     { screen : Screen
     , rpc : String
     , now : Int
+    , jwt : Maybe String
     }
 
 
@@ -106,7 +108,7 @@ type Msg
     | GenSelect Match
     | StartTimeCb Int
     | Tick Time.Posix
-    | HitCb (Result JD.Error PoolMintData)
+    | HitCb (Result JD.Error WsMsg)
     | WsConnect
     | WsDisconnect
     | WsDisconnected
@@ -145,9 +147,25 @@ type WsStatus
     | Live
 
 
+type WsMsg
+    = PoolHit PoolMintData
+    | WsConnected Float
+    | PoolUpdate PoolUpdateData
+
+
+type alias PoolUpdateData =
+    { poolId : String
+    , lpSupply : Float
+    , solReserve : Float
+    , price : Float
+    }
+
+
 type alias Wallet =
     { address : String
+    , holder : Bool
     , token : Maybe String
+    , adapterConnected : Bool
     }
 
 
@@ -164,7 +182,6 @@ type alias Inventory =
     , t10 : Int
     , z : Int
     , total : Int
-    , utilityAccess : Bool
     }
 
 
@@ -179,7 +196,7 @@ type alias PoolMintData =
     , top20 : Float
     , top10 : Float
     , pool : String
-    , price : Int
+    , price : Float
     , openTime : Int
     , symbol : String
     , mintSupply : Float

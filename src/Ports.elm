@@ -29,6 +29,9 @@ port wsDisconnect : () -> Cmd msg
 port wsConnect : String -> Cmd msg
 
 
+port saveJWT : String -> Cmd msg
+
+
 port disconnectOut : () -> Cmd msg
 
 

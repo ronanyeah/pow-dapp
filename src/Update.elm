@@ -90,9 +90,9 @@ update msg model =
                     )
                     (\hit ->
                         ( { model
-                            | hits =
-                                model.hits
-                                    |> Dict.insert hit.mint hit
+                            | pools =
+                                model.pools
+                                    |> Dict.insert hit.pool hit
                           }
                         , Cmd.none
                         )
@@ -142,24 +142,51 @@ update msg model =
                         , Ports.log (JD.errorToString err)
                         )
                     )
-                    (\hit ->
-                        ( { model
-                            | hits =
-                                model.hits
-                                    |> Dict.insert hit.mint hit
-                                    |> Dict.toList
-                                    |> List.sortBy (\( _, v ) -> v.openTime)
-                                    |> List.reverse
-                                    |> List.take 30
-                                    |> Dict.fromList
-                          }
-                        , Cmd.none
-                        )
+                    (\wsMsg ->
+                        case wsMsg of
+                            PoolHit hit ->
+                                ( { model
+                                    | pools =
+                                        model.pools
+                                            |> Dict.insert hit.pool hit
+                                            |> Dict.toList
+                                            |> List.sortBy (\( _, v ) -> v.openTime)
+                                            |> List.reverse
+                                            |> List.take 30
+                                            |> Dict.fromList
+                                  }
+                                , Cmd.none
+                                )
+
+                            WsConnected solPrice ->
+                                ( { model
+                                    | solPrice = solPrice
+                                  }
+                                , Cmd.none
+                                )
+
+                            PoolUpdate data ->
+                                ( { model
+                                    | pools =
+                                        model.pools
+                                            |> Dict.update data.poolId
+                                                (Maybe.map
+                                                    (\h ->
+                                                        { h
+                                                            | liquidityLocked = data.lpSupply == 0
+                                                            , reserve = data.solReserve
+                                                            , price = data.price
+                                                        }
+                                                    )
+                                                )
+                                  }
+                                , Cmd.none
+                                )
                     )
 
         ClearResults ->
             ( { model
-                | hits = Dict.empty
+                | pools = Dict.empty
               }
             , Cmd.none
             )
@@ -508,6 +535,12 @@ update msg model =
                         )
                     )
                     (\token ->
+                        let
+                            holderAccess =
+                                token
+                                    |> Misc.parseJWT
+                                    |> unwrap False Tuple.second
+                        in
                         ( { model
                             | wallet =
                                 model.wallet
@@ -515,11 +548,15 @@ update msg model =
                                         (\wl ->
                                             { wl
                                                 | token = Just token
+                                                , holder = holderAccess
                                             }
                                         )
                           }
-                        , getInventory token
-                            |> Task.attempt InventoryCb
+                        , [ getInventory token
+                                |> Task.attempt InventoryCb
+                          , Ports.saveJWT token
+                          ]
+                            |> Cmd.batch
                         )
                     )
 
@@ -542,6 +579,8 @@ update msg model =
                     Just
                         { address = val
                         , token = Nothing
+                        , adapterConnected = True
+                        , holder = False
                         }
               }
             , Cmd.none
@@ -633,7 +672,7 @@ update msg model =
             ( { model
                 | wallet = Nothing
                 , inventory = Nothing
-                , hits = Dict.empty
+                , pools = Dict.empty
               }
             , Ports.disconnectOut ()
             )
@@ -685,11 +724,6 @@ getInventory token =
                 |> JDP.required "t10" JD.int
                 |> JDP.required "z" JD.int
                 |> JDP.required "total" JD.int
-                |> JDP.custom (JD.succeed False)
-                |> JD.map
-                    (\inv ->
-                        { inv | utilityAccess = inv.total > 0 }
-                    )
                 |> jsonResolver
         , timeout = Nothing
         }

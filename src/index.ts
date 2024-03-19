@@ -39,6 +39,7 @@ const solConnect = new SolanaConnect();
       },
       rpc: RPC.toString(),
       now: Date.now(),
+      jwt: localStorage.getItem("JWT"),
     },
   });
 
@@ -64,7 +65,12 @@ const solConnect = new SolanaConnect();
 
   app.ports.log.subscribe((txt: string) => console.log(txt));
 
+  app.ports.saveJWT.subscribe((val) => {
+    localStorage.setItem("JWT", val);
+  });
+
   app.ports.disconnectOut.subscribe(() => {
+    localStorage.removeItem("JWT");
     const wallet = solConnect.getWallet();
     if (wallet) {
       wallet.disconnect();

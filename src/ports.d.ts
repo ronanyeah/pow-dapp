@@ -8,6 +8,7 @@ interface Ports {
   log: PortOut<string>;
   wsDisconnect: PortOut<null>;
   wsConnect: PortOut<string>;
+  saveJWT: PortOut<string>;
   disconnectOut: PortOut<null>;
   signIn: PortOut<null>;
   findRegister: PortOut<number>;
