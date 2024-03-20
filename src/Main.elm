@@ -38,6 +38,7 @@ init flags =
                                 )
                     )
       , keypairMessage = Nothing
+      , wsConnectInProgress = False
       , err = Nothing
       , loadedKeypair = Nothing
       , isMobile = flags.screen.width < 1024 --|| flags.screen.height < 632

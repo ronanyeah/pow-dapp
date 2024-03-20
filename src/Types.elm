@@ -52,6 +52,7 @@ type alias Model =
     , viewUtility : ViewHolderAcc
     , menuDropdown : Bool
     , solPrice : Float
+    , wsConnectInProgress : Bool
     }
 
 

@@ -1934,7 +1934,18 @@ viewMemescan model utilityAccess =
 
         connectElem =
             text "📡  Connect"
-                |> baseBtn (Just WsConnect) []
+                |> baseBtn
+                    (if model.wsConnectInProgress then
+                        Nothing
+
+                     else
+                        Just WsConnect
+                    )
+                    [ spinner 15
+                        |> el [ centerY, paddingXY 10 0 ]
+                        |> onRight
+                        |> whenAttr model.wsConnectInProgress
+                    ]
     in
     if poolsPresent then
         [ [ [ titleElem

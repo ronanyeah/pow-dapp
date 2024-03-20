@@ -105,6 +105,7 @@ update msg model =
                     (\token ->
                         ( { model
                             | wsStatus = Connecting
+                            , wsConnectInProgress = True
                           }
                         , Ports.wsConnect token
                         )
@@ -128,6 +129,7 @@ update msg model =
 
                     else
                         Standby
+                , wsConnectInProgress = False
               }
             , Cmd.none
             )
