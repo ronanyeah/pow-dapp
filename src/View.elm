@@ -2033,6 +2033,9 @@ viewPool model hit =
 
             else
                 row [ width fill, spaceEvenly ]
+
+        rugged =
+            hit.reserve < 0.5
     in
     [ [ [ text "POOL"
             |> el [ Font.bold ]
@@ -2047,7 +2050,13 @@ viewPool model hit =
                 , Font.color white
                 , padding 10
                 ]
-      , text ("⏰ " ++ formatTime model.now hit.openTime)
+      , text
+            (if rugged then
+                "⚠️ RUGGED"
+
+             else
+                "⏰ " ++ formatTime model.now hit.openTime
+            )
             |> el
                 [ paddingXY 10 0
                 , monospaceFont
@@ -2110,13 +2119,7 @@ viewPool model hit =
           , viewBubble "LP Mint" hit.lpMint
           ]
             |> axis
-        , [ viewTag "SOL reserve"
-                (if hit.reserve < 0.5 then
-                    "RUGGED"
-
-                 else
-                    formatFloat hit.reserve
-                )
+        , [ viewTag "SOL reserve" (formatFloat hit.reserve)
           , viewTag "Pool Age" (formatTime model.now hit.openTime)
           ]
             |> axis
