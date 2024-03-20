@@ -41,44 +41,35 @@ onmessage = async (event) => {
   })();
 
   let count = 0;
-  const keys: CryptoKeyPair[] = [];
+  const keys = [];
 
-  await Promise.all([
-    (async () => {
-      while (count < params.count) {
-        try {
-          const keypair = await crypto.subtle.generateKey("Ed25519", true, [
-            "sign",
-            "verify",
-          ]);
-          keys.push(keypair);
-        } catch (_e) {
-          console.error("op1 fail");
-        }
-        count += 1;
+  while (count < params.count) {
+    try {
+      const keypair = await crypto.subtle.generateKey("Ed25519", true, [
+        "sign",
+        "verify",
+      ]);
+      keys.push(keypair);
+    } catch (e) {
+      console.error("Failed to generate keypair:", e);
+    }
+    count += 1;
+  }
+
+  for (const keypair of keys) {
+    try {
+      const addr = await getAddressFromPublicKey(keypair.publicKey);
+
+      if (isMatch(addr)) {
+        const solanaKey = await exportBytes(keypair);
+        self.postMessage({ match: solanaKey });
       }
-    })(),
-    (async () => {
-      while (keys.length > 0 || count < params.count) {
-        const keypair = keys.pop();
-        if (keypair) {
-          try {
-            const addr = await getAddressFromPublicKey(keypair.publicKey);
+    } catch (e) {
+      console.error("Failed to process keypair:", e);
+    }
+  }
 
-            if (isMatch(addr)) {
-              postMessage({ match: await exportBytes(keypair) });
-            }
-          } catch (_e) {
-            console.error("op2 fail");
-          }
-        } else {
-          await new Promise((resolve) => setTimeout(() => resolve(true), 0));
-        }
-      }
-    })(),
-  ]);
-
-  postMessage({ exit: count });
+  self.postMessage({ exit: count });
 };
 
 async function exportBytes(keypair: CryptoKeyPair): Promise<Uint8Array> {
