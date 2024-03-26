@@ -1,7 +1,36 @@
 {
   "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
     "strict": true,
-    "esModuleInterop": true
+    "declaration": false,
+    "sourceMap": false,
+    "noEmit": false,
+    "noEmitOnError": true,
+    "skipDefaultLibCheck": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "moduleResolution": "node",
+    "moduleDetection": "force",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strictPropertyInitialization": false,
+    "declarationMap": false,
+    "importHelpers": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": true,
+    "baseUrl": "./src",
+    "skipLibCheck": true,
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "paths": {
+      "*": ["types/*"]
+    }
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
 }
+
