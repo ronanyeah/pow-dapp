@@ -3,6 +3,22 @@
 import "@solana/webcrypto-ed25519-polyfill";
 import { getAddressFromPublicKey } from "solana-new";
 
+class Queue<T> {
+  private items: T[] = [];
+
+  enqueue(item: T) {
+    this.items.push(item);
+  }
+
+  dequeue(): T | undefined {
+    return this.items.shift();
+  }
+
+  get length(): number {
+    return this.items.length;
+  }
+}
+
 interface Params {
   count: number;
   criteria: Criteria;
@@ -10,16 +26,9 @@ interface Params {
 
 type Criteria =
   | null
-  | {
-      start: string;
-    }
-  | {
-      end: string;
-    }
-  | {
-      start: string;
-      end: string;
-    };
+  | { start: string }
+  | { end: string }
+  | { start: string; end: string };
 
 onmessage = async (event) => {
   const params: Params = event.data;
@@ -27,7 +36,6 @@ onmessage = async (event) => {
   const isMatch = (() => {
     const criteria = params.criteria;
     if (!criteria) {
-      //const regex = /^b[1-9]\d*/;
       const regex = /^pow[1-9]\d*/;
       return (addr: string) => regex.test(addr);
     } else if ("start" in criteria && "end" in criteria) {
@@ -41,7 +49,7 @@ onmessage = async (event) => {
   })();
 
   let count = 0;
-  const keys: CryptoKeyPair[] = [];
+  const keys = new Queue<CryptoKeyPair>();
 
   await Promise.all([
     (async () => {
@@ -51,7 +59,7 @@ onmessage = async (event) => {
             "sign",
             "verify",
           ]);
-          keys.push(keypair);
+          keys.enqueue(keypair);
         } catch (_e) {
           console.error("op1 fail");
         }
@@ -60,11 +68,10 @@ onmessage = async (event) => {
     })(),
     (async () => {
       while (keys.length > 0 || count < params.count) {
-        const keypair = keys.pop();
+        const keypair = keys.dequeue();
         if (keypair) {
           try {
             const addr = await getAddressFromPublicKey(keypair.publicKey);
-
             if (isMatch(addr)) {
               postMessage({ match: await exportBytes(keypair) });
             }
